@@ -29,7 +29,7 @@ impl<T> Invokable<T> for OneShotEvent<T> {
 
         self._listeners.clear();
 
-        self._args = Option::from(arg);
+        self._args = Some(arg);
     }
 }
 
