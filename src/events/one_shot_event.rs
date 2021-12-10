@@ -1,6 +1,6 @@
 use std::rc::{Rc, Weak};
 
-use super::{Invokable, Subscribable, Subscription};
+use super::{subscription::create_registered_subscription, Invokable, Subscribable, Subscription};
 
 /// calls all subscribers on invoke. all new subscribers after the
 /// first invoke will get called immediately with args from the first invoke.
@@ -45,12 +45,7 @@ impl<T: 'static> Subscribable<T> for OneShotEvent<T> {
         subscriber(&v);
         return Subscription::new(Rc::new(subscriber));
       }
-      None => {
-        let ref_subscriber = Rc::new(subscriber);
-        let weak_subscriber = Rc::downgrade(&ref_subscriber.clone());
-        self._subscribers.push(weak_subscriber);
-        return Subscription::new(ref_subscriber);
-      }
+      None => return create_registered_subscription(&mut self._subscribers, subscriber),
     }
   }
 }

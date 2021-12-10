@@ -1,6 +1,6 @@
-use std::rc::{Rc, Weak};
+use std::rc::Weak;
 
-use super::{Invokable, Subscribable, Subscription};
+use super::{subscription::create_registered_subscription, Invokable, Subscribable, Subscription};
 
 /// calls all subscribers on invoke. not threadsafe.
 pub struct Event<T> {
@@ -17,21 +17,20 @@ impl<T> Event<T> {
 
 impl<T> Invokable<T> for Event<T> {
   fn invoke(&mut self, arg: T) {
-    self._subscribers.retain(|subscriber| match subscriber.upgrade() {
-      Some(v) => {
-        v(&arg);
-        return true;
-      }
-      None => return false,
-    });
+    self
+      ._subscribers
+      .retain(|subscriber| match subscriber.upgrade() {
+        Some(v) => {
+          v(&arg);
+          return true;
+        }
+        None => return false,
+      });
   }
 }
 
 impl<T: 'static> Subscribable<T> for Event<T> {
   fn subscribe<'r>(&mut self, subscriber: Box<dyn Fn(&T)>) -> Subscription<T> {
-    let ref_subscriber = Rc::new(subscriber);
-    let weak_subscriber = Rc::downgrade(&ref_subscriber.clone());
-    self._subscribers.push(weak_subscriber);
-    return Subscription::new(ref_subscriber);
+    return create_registered_subscription(&mut self._subscribers, subscriber);
   }
 }
