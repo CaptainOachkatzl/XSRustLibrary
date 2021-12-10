@@ -8,7 +8,7 @@ pub trait Invokable<T> {
 }
 
 pub trait Subscribable<T> {
-    fn subscribe(&mut self, listener: impl Fn(&T) + 'static) -> Subscription<T>;
+    fn subscribe(&mut self, listener: Box<dyn Fn(&T)>) -> Subscription<T>;
 }
 
 pub struct Subscription<T> {

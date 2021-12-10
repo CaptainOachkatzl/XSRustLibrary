@@ -38,8 +38,8 @@ impl<T> Invokable<T> for OneShotEvent<T> {
     }
 }
 
-impl<T> Subscribable<T> for OneShotEvent<T> {
-    fn subscribe(&mut self, listener: impl Fn(&T) + 'static) -> Subscription<T> {
+impl<T: 'static> Subscribable<T> for OneShotEvent<T> {
+    fn subscribe(&mut self, listener: Box<dyn Fn(&T)>) -> Subscription<T> {
         match &self._args {
             Some(v) => {
                 listener(&v);

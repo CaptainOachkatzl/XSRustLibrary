@@ -27,8 +27,8 @@ impl<T> Invokable<T> for Event<T> {
     }
 }
 
-impl<T> Subscribable<T> for Event<T> {
-    fn subscribe(&mut self, listener: impl Fn(&T) + 'static) -> Subscription<T> {
+impl<T: 'static> Subscribable<T> for Event<T> {
+    fn subscribe<'r>(&mut self, listener: Box<dyn Fn(&T)>) -> Subscription<T> {
         let ref_listener = Rc::new(listener);
         let weak_listener = Rc::downgrade(&ref_listener.clone());
         self._listeners.push(weak_listener);
