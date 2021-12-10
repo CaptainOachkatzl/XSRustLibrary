@@ -1,10 +1,12 @@
-use super::{Invokable, Subscribable};
+use std::rc::{Rc, Weak};
+
+use super::{Invokable, Subscribable, Subscription};
 
 /// calls all listeners on invoke. all new listeners after the
 /// first invoke will get called immediately with args from the first invoke.
 /// not threadsafe.
 pub struct OneShotEvent<T> {
-    _listeners: Vec<Box<dyn Fn(&T)>>,
+    _listeners: Vec<Weak<dyn Fn(&T)>>,
     _args: Option<T>,
 }
 
@@ -24,7 +26,10 @@ impl<T> Invokable<T> for OneShotEvent<T> {
         }
 
         for listener in &self._listeners {
-            listener(&arg);
+            match listener.upgrade() {
+                Some(v) => v(&arg),
+                None => (),
+            }
         }
 
         self._listeners.clear();
@@ -34,7 +39,18 @@ impl<T> Invokable<T> for OneShotEvent<T> {
 }
 
 impl<T> Subscribable<T> for OneShotEvent<T> {
-    fn subscribe(&mut self, listener: impl Fn(&T) + 'static) {
-        self._listeners.push(Box::new(listener));
+    fn subscribe(&mut self, listener: impl Fn(&T) + 'static) -> Subscription<T> {
+        match &self._args {
+            Some(v) => {
+                listener(&v);
+                return Subscription::new(Rc::new(listener));
+            }
+            None => {
+                let ref_listener = Rc::new(listener);
+                let weak_listener = Rc::downgrade(&ref_listener.clone());
+                self._listeners.push(weak_listener);
+                return Subscription::new(ref_listener);
+            }
+        }
     }
 }
