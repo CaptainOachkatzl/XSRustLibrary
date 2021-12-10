@@ -18,8 +18,9 @@ mod tests {
       assert_eq!(*x, 3);
     };
 
-    let _sub = event.subscribe(Box::new(callback));
+    let _sub = event.subscribe(Box::new(callback.clone()));
     event.invoke(3);
+    let _sub = event.subscribe(Box::new(callback));
 
     assert_eq!(*counter_result.borrow(), 1);
   }
