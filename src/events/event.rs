@@ -2,22 +2,22 @@ use std::rc::{Rc, Weak};
 
 use super::{Invokable, Subscribable, Subscription};
 
-/// calls all listeners on invoke. not threadsafe.
+/// calls all subscribers on invoke. not threadsafe.
 pub struct Event<T> {
-  _listeners: Vec<Weak<dyn Fn(&T)>>,
+  _subscribers: Vec<Weak<dyn Fn(&T)>>,
 }
 
 impl<T> Event<T> {
   pub fn new() -> Self {
     Self {
-      _listeners: Vec::new(),
+      _subscribers: Vec::new(),
     }
   }
 }
 
 impl<T> Invokable<T> for Event<T> {
   fn invoke(&mut self, arg: T) {
-    self._listeners.retain(|listener| match listener.upgrade() {
+    self._subscribers.retain(|subscriber| match subscriber.upgrade() {
       Some(v) => {
         v(&arg);
         return true;
@@ -28,10 +28,10 @@ impl<T> Invokable<T> for Event<T> {
 }
 
 impl<T: 'static> Subscribable<T> for Event<T> {
-  fn subscribe<'r>(&mut self, listener: Box<dyn Fn(&T)>) -> Subscription<T> {
-    let ref_listener = Rc::new(listener);
-    let weak_listener = Rc::downgrade(&ref_listener.clone());
-    self._listeners.push(weak_listener);
-    return Subscription::new(ref_listener);
+  fn subscribe<'r>(&mut self, subscriber: Box<dyn Fn(&T)>) -> Subscription<T> {
+    let ref_subscriber = Rc::new(subscriber);
+    let weak_subscriber = Rc::downgrade(&ref_subscriber.clone());
+    self._subscribers.push(weak_subscriber);
+    return Subscription::new(ref_subscriber);
   }
 }

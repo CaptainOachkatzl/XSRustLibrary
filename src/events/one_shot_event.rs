@@ -2,18 +2,18 @@ use std::rc::{Rc, Weak};
 
 use super::{Invokable, Subscribable, Subscription};
 
-/// calls all listeners on invoke. all new listeners after the
+/// calls all subscribers on invoke. all new subscribers after the
 /// first invoke will get called immediately with args from the first invoke.
 /// not threadsafe.
 pub struct OneShotEvent<T> {
-  _listeners: Vec<Weak<dyn Fn(&T)>>,
+  _subscribers: Vec<Weak<dyn Fn(&T)>>,
   _args: Option<T>,
 }
 
 impl<T> OneShotEvent<T> {
   pub fn new() -> OneShotEvent<T> {
     OneShotEvent::<T> {
-      _listeners: Vec::new(),
+      _subscribers: Vec::new(),
       _args: Option::None,
     }
   }
@@ -25,31 +25,31 @@ impl<T> Invokable<T> for OneShotEvent<T> {
       return;
     }
 
-    for listener in &self._listeners {
-      match listener.upgrade() {
+    for subscriber in &self._subscribers {
+      match subscriber.upgrade() {
         Some(v) => v(&arg),
         None => (),
       }
     }
 
-    self._listeners.clear();
+    self._subscribers.clear();
 
     self._args = Some(arg);
   }
 }
 
 impl<T: 'static> Subscribable<T> for OneShotEvent<T> {
-  fn subscribe(&mut self, listener: Box<dyn Fn(&T)>) -> Subscription<T> {
+  fn subscribe(&mut self, subscriber: Box<dyn Fn(&T)>) -> Subscription<T> {
     match &self._args {
       Some(v) => {
-        listener(&v);
-        return Subscription::new(Rc::new(listener));
+        subscriber(&v);
+        return Subscription::new(Rc::new(subscriber));
       }
       None => {
-        let ref_listener = Rc::new(listener);
-        let weak_listener = Rc::downgrade(&ref_listener.clone());
-        self._listeners.push(weak_listener);
-        return Subscription::new(ref_listener);
+        let ref_subscriber = Rc::new(subscriber);
+        let weak_subscriber = Rc::downgrade(&ref_subscriber.clone());
+        self._subscribers.push(weak_subscriber);
+        return Subscription::new(ref_subscriber);
       }
     }
   }
