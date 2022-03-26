@@ -3,14 +3,14 @@ pub mod network;
 
 #[cfg(test)]
 mod tests {
-  
-use std::io::Result;
-use std::time::Duration;
-use std::{cell::RefCell, rc::Rc, thread};
+
+  use std::io::Result;
   use std::net::{TcpListener, TcpStream};
+  use std::sync::{Arc, Barrier};
+  use std::{cell::RefCell, rc::Rc, thread};
 
   use crate::events::{event::Event, one_shot_event::OneShotEvent, Invokable, Subscribable};
-use crate::network::tcp_packet_connection::TcpPacketConnection;
+  use crate::network::tcp_packet_connection::TcpPacketConnection;
 
   #[test]
   fn event_test() {
@@ -51,23 +51,31 @@ use crate::network::tcp_packet_connection::TcpPacketConnection;
   }
 
   #[test]
-  fn connect_test() { 
-    thread::spawn(|| {
-      start_listening().unwrap();
+  fn connect_test() {
+    // weird way to implement a signal, maybe replace with better fit
+    let listening_barrier: Arc<Barrier> = Arc::new(Barrier::new(2));
+    let listening_copy = listening_barrier.clone();
+
+    let listener_thread = thread::spawn(move || {
+      start_listening(listening_copy).unwrap();
     });
 
-    thread::sleep(Duration::from_secs(2));
+    listening_barrier.wait();
 
     match connect_to_localhost() {
       Ok(()) => assert!(true),
       Err(_) => assert!(false),
     }
+
+    listener_thread.join().unwrap();
   }
 
-  fn start_listening() -> Result<()> {
+  fn start_listening(listening: Arc<Barrier>) -> Result<()> {
     let listener = TcpListener::bind("0.0.0.0:1234").unwrap();
-    let accept_stream: TcpStream = listener.accept().unwrap().0;
 
+    listening.wait();
+
+    let accept_stream: TcpStream = listener.accept().unwrap().0;
     let mut accept_connection = TcpPacketConnection::new(accept_stream);
     accept_connection.send(b"test123")?;
     Ok(())
