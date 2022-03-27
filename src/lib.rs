@@ -10,7 +10,7 @@ mod tests {
   use std::{cell::RefCell, rc::Rc, thread};
 
   use crate::events::{event::Event, one_shot_event::OneShotEvent, Invokable, Subscribable};
-  use crate::network::tcp_packet_connection::TcpPacketConnection;
+  use crate::network::packet_connection::PacketConnection;
 
   #[test]
   fn event_test() {
@@ -76,7 +76,7 @@ mod tests {
     listening.wait();
 
     let accept_stream: TcpStream = listener.accept().unwrap().0;
-    let mut accept_connection = TcpPacketConnection::new(accept_stream);
+    let mut accept_connection = PacketConnection::new(accept_stream);
     accept_connection.send(b"test123")?;
     accept_connection.send(b"abc")?;
     Ok(())
@@ -84,7 +84,7 @@ mod tests {
 
   fn connect_to_localhost() -> std::io::Result<()> {
     let stream = TcpStream::connect("127.0.0.1:1234")?;
-    let mut connection = TcpPacketConnection::new(stream);
+    let mut connection = PacketConnection::new(stream);
     assert_eq!(connection.receive().unwrap().len(), 7);
     assert_eq!(connection.receive().unwrap().len(), 3);
     Ok(())

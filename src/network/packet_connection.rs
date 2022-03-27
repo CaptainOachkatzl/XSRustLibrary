@@ -6,15 +6,15 @@ use std::{
 
 use super::{packet_slicer::PacketSlicer, packet_assembler::PacketAssembler};
 
-pub struct TcpPacketConnection {
+pub struct PacketConnection {
   tcp_stream: TcpStream,
   packet_slicer: PacketSlicer,
   packet_assembler: PacketAssembler,
 }
 
-impl TcpPacketConnection {
-  pub fn new(tcp_stream: TcpStream) -> TcpPacketConnection {
-    TcpPacketConnection {
+impl PacketConnection {
+  pub fn new(tcp_stream: TcpStream) -> PacketConnection {
+    PacketConnection {
       tcp_stream,
       packet_slicer: PacketSlicer::new(1024),
       packet_assembler: PacketAssembler::new(),
