@@ -1,10 +1,6 @@
 use std::io::{Result, Write};
 use std::net::TcpStream;
-
-const HEADER_SIZE_ID: usize = 1;
-const HEADER_SIZE_PACKET_SIZE: usize = 4;
-
-const HEADER_ID_PACKET: u8 = 0x00;
+use super::constants::{ HEADER_SIZE_ID, HEADER_SIZE_PACKET_SIZE, HEADER_ID_PACKET };
 
 pub struct PacketSlicer {
   max_chunk_size: usize,

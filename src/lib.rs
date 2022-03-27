@@ -78,6 +78,7 @@ mod tests {
     let accept_stream: TcpStream = listener.accept().unwrap().0;
     let mut accept_connection = TcpPacketConnection::new(accept_stream);
     accept_connection.send(b"test123")?;
+    accept_connection.send(b"abc")?;
     Ok(())
   }
 
@@ -85,6 +86,7 @@ mod tests {
     let stream = TcpStream::connect("127.0.0.1:1234")?;
     let mut connection = TcpPacketConnection::new(stream);
     assert_eq!(connection.receive().unwrap().len(), 7);
+    assert_eq!(connection.receive().unwrap().len(), 3);
     Ok(())
   }
 }
