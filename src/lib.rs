@@ -76,7 +76,7 @@ mod tests {
     listening.wait();
 
     let accept_stream: TcpStream = listener.accept().unwrap().0;
-    let mut accept_connection = PacketConnection::new(accept_stream);
+    let mut accept_connection = PacketConnection::new(accept_stream, 1024);
     accept_connection.send(b"test123")?;
     accept_connection.send(b"abc")?;
     accept_connection.send(&[5 as u8; 10*1024*1024])?;
@@ -85,7 +85,7 @@ mod tests {
 
   fn connect_to_localhost() -> std::io::Result<()> {
     let stream = TcpStream::connect("127.0.0.1:1234")?;
-    let mut connection = PacketConnection::new(stream);
+    let mut connection = PacketConnection::new(stream, 1024);
     assert_eq!(connection.receive().unwrap().len(), 7);
     assert_eq!(connection.receive().unwrap().len(), 3);
     let big_data = connection.receive().unwrap();
@@ -108,7 +108,7 @@ mod tests {
   }
 
   fn dummy_send(stream: TcpStream) {
-    let mut packet_connection = PacketConnection::new(stream);
+    let mut packet_connection = PacketConnection::new(stream, 1024);
     packet_connection.send(&[0 as u8; 8]).expect("sending failed");
   }
 }
