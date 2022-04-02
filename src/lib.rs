@@ -91,4 +91,22 @@ mod tests {
     assert_eq!(connection.receive().unwrap().len(), 10*1024*1024);
     Ok(())
   }
+
+  #[test]
+  fn multithread_connection_access() {
+
+    let _listener = TcpListener::bind("0.0.0.0:2345").unwrap();
+    let stream = TcpStream::connect("127.0.0.1:2345").unwrap();
+    let stream_copy = stream.try_clone().unwrap();
+    let _receive_thread = thread::spawn(move || {
+      dummy_send(stream_copy);
+    });
+
+    dummy_send(stream);
+  }
+
+  fn dummy_send(stream: TcpStream) {
+    let mut packet_connection = PacketConnection::new(stream);
+    packet_connection.send(&[0 as u8; 8]).expect("sending failed");
+  }
 }
