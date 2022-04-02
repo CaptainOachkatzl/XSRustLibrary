@@ -28,7 +28,7 @@ impl PacketAssembler {
     }
 
     // create a new packet
-    let packet_size = self.get_packet_size(&buffer);
+    let packet_size = self.get_packet_size(&buffer)?;
     let mut packet: Vec<u8> = vec![0 as u8; packet_size];
     buffer.drain(..HEADER_SIZE_ID + HEADER_SIZE_PACKET_SIZE);
 
@@ -54,14 +54,17 @@ impl PacketAssembler {
     Ok(packet)
   }
 
-  fn get_packet_size(&self, data: &Vec<u8>) -> usize {
-    let size = u32::from_le_bytes(
-      data[1..5]
-        .try_into()
-        .expect("could not extract u32 from array size != 4"),
-        // todo: panicking because of malformed header packet certainly not a good idea
-    );
-    return size as usize;
+  fn get_packet_size(&self, data: &Vec<u8>) -> Result<usize> {
+    let result = data[1..5].try_into();
+    if result.is_err() {
+      return Err(Error::new(
+        ErrorKind::InvalidData,
+        "invalid packet size header",
+      ));
+    }
+
+    let size = u32::from_le_bytes(result.unwrap());
+    return Ok(size as usize);
   }
 
   fn is_packet_chunk(&self, data: &Vec<u8>) -> bool {
