@@ -79,7 +79,7 @@ mod tests {
     let mut accept_connection = PacketConnection::new(accept_stream);
     accept_connection.send(b"test123")?;
     accept_connection.send(b"abc")?;
-    accept_connection.send(&[1 as u8; 10*1024*1024])?;
+    accept_connection.send(&[5 as u8; 10*1024*1024])?;
     Ok(())
   }
 
@@ -88,7 +88,9 @@ mod tests {
     let mut connection = PacketConnection::new(stream);
     assert_eq!(connection.receive().unwrap().len(), 7);
     assert_eq!(connection.receive().unwrap().len(), 3);
-    assert_eq!(connection.receive().unwrap().len(), 10*1024*1024);
+    let big_data = connection.receive().unwrap();
+    assert_eq!(big_data.len(), 10*1024*1024);
+    assert_eq!(big_data, [5 as u8; 10*1024*1024]);
     Ok(())
   }
 

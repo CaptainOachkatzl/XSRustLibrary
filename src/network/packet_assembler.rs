@@ -1,30 +1,30 @@
-use std::{io::{Result, Read, Error, ErrorKind}, net::TcpStream};
-use super::constants::{ HEADER_SIZE_ID, HEADER_SIZE_PACKET_SIZE, HEADER_ID_PACKET };
+use super::constants::{HEADER_ID_PACKET, HEADER_SIZE_ID, HEADER_SIZE_PACKET_SIZE};
+use std::io::{Error, ErrorKind, Result};
 
 pub struct PacketAssembler {
-  leftover: Option<Vec<u8>>
+  leftover: Option<Vec<u8>>,
 }
 
 impl PacketAssembler {
-
   pub fn new() -> PacketAssembler {
     PacketAssembler { leftover: None }
   }
 
-  pub fn assemble(&mut self, tcp_stream: &mut TcpStream) -> Result<Vec<u8>> {
+  pub fn assemble<'a>(&mut self, receive: &mut dyn FnMut() -> Result<Vec<u8>>) -> Result<Vec<u8>> {
     let mut packet_cursor = 0;
 
     let mut buffer: Vec<u8>;
     if self.leftover.is_some() {
       buffer = self.leftover.take().unwrap();
-    }
-    else {
-      buffer = Vec::new();
-      tcp_stream.read_to_end(&mut buffer).unwrap();
+    } else {
+      buffer = receive()?;
     }
 
     if !self.is_packet_chunk(&buffer) {
-      return Err(Error::new(ErrorKind::InvalidData, "invalid packet chunk header"));
+      return Err(Error::new(
+        ErrorKind::InvalidData,
+        "invalid packet chunk header",
+      ));
     }
 
     // create a new packet
@@ -33,22 +33,22 @@ impl PacketAssembler {
     buffer.drain(..HEADER_SIZE_ID + HEADER_SIZE_PACKET_SIZE);
 
     while packet_cursor < packet_size {
-
-      if packet_cursor + buffer.len() > packet_size {
-        packet.clone_from_slice(&buffer[..packet_size - packet_cursor]);
-        self.leftover = Some(buffer[packet_size - packet_cursor..].to_vec());
-        break;
-      }
-      else {
-        packet.clone_from_slice(&buffer);
-        packet_cursor = packet_cursor + buffer.len();
-
-        if packet_cursor == packet_size {
+      if buffer.len() > 0 {
+        if packet_cursor + buffer.len() > packet_size {
+          packet.clone_from_slice(&buffer[..packet_size - packet_cursor]);
+          self.leftover = Some(buffer[packet_size - packet_cursor..].to_vec());
           break;
+        } else {
+          packet[packet_cursor..packet_cursor + buffer.len()].clone_from_slice(&buffer);
+          packet_cursor = packet_cursor + buffer.len();
+
+          if packet_cursor == packet_size {
+            break;
+          }
         }
       }
 
-      tcp_stream.read_to_end(&mut buffer).unwrap();
+      buffer = receive()?;
     }
 
     Ok(packet)

@@ -1,10 +1,10 @@
 use std::{
-  io::{Result, Write},
+  io::{Result, Write, Read},
   net::TcpStream,
   u8,
 };
 
-use super::{packet_assembler::PacketAssembler, constants::{HEADER_ID_PACKET, HEADER_SIZE_ID}};
+use super::{packet_assembler::PacketAssembler, constants::{HEADER_ID_PACKET}};
 
 pub struct PacketConnection {
   tcp_stream: TcpStream,
@@ -27,13 +27,21 @@ impl PacketConnection {
   }
 
   fn write_header(&mut self, length: usize) -> Result<()> {
+    let mut header = [0 as u8; 5];
     // indicate data package with first byte 0x00
-    self.tcp_stream.write(&[HEADER_ID_PACKET; HEADER_SIZE_ID])?;
-    self.tcp_stream.write(&(length as u32).to_le_bytes())?;
+    header[0] = HEADER_ID_PACKET;
+    header[1..5].copy_from_slice(&(length as u32).to_le_bytes());
+    self.tcp_stream.write(&header)?;
     Ok(())
   }
 
   pub fn receive(&mut self) -> Result<Vec<u8>> {  
-    return self.packet_assembler.assemble(&mut self.tcp_stream);
+    let mut receive_call = || {
+      let mut buffer = [1 as u8; 256];
+      let size = self.tcp_stream.read(&mut buffer)?;
+
+      return Ok(Vec::from(&buffer[..size]));
+    };
+    return self.packet_assembler.assemble(&mut receive_call);
   }
 }
