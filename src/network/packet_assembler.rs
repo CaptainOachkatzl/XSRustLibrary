@@ -59,6 +59,7 @@ impl PacketAssembler {
       data[1..5]
         .try_into()
         .expect("could not extract u32 from array size != 4"),
+        // todo: panicking because of malformed header packet certainly not a good idea
     );
     return size as usize;
   }
