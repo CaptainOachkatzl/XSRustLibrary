@@ -1,14 +1,13 @@
 use std::{
-  io::Result,
+  io::{Result, Write},
   net::TcpStream,
   u8,
 };
 
-use super::{packet_slicer::PacketSlicer, packet_assembler::PacketAssembler};
+use super::{packet_assembler::PacketAssembler, constants::{HEADER_ID_PACKET, HEADER_SIZE_ID}};
 
 pub struct PacketConnection {
   tcp_stream: TcpStream,
-  packet_slicer: PacketSlicer,
   packet_assembler: PacketAssembler,
 }
 
@@ -16,13 +15,21 @@ impl PacketConnection {
   pub fn new(tcp_stream: TcpStream) -> PacketConnection {
     PacketConnection {
       tcp_stream,
-      packet_slicer: PacketSlicer::new(1024),
       packet_assembler: PacketAssembler::new(),
     }
   }
 
   pub fn send(&mut self, data: &[u8]) -> Result<()> {
-    self.packet_slicer.slice(&mut self.tcp_stream, data)?;
+    self.write_header(data.len())?;
+    self.tcp_stream.write(data)?;
+    self.tcp_stream.flush()?;
+    Ok(())
+  }
+
+  fn write_header(&mut self, length: usize) -> Result<()> {
+    // indicate data package with first byte 0x00
+    self.tcp_stream.write(&[HEADER_ID_PACKET; HEADER_SIZE_ID])?;
+    self.tcp_stream.write(&(length as u32).to_le_bytes())?;
     Ok(())
   }
 
