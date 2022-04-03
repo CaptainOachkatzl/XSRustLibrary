@@ -100,11 +100,12 @@ mod tests {
     let _listener = TcpListener::bind("0.0.0.0:2345").unwrap();
     let stream = TcpStream::connect("127.0.0.1:2345").unwrap();
     let stream_copy = stream.try_clone().unwrap();
-    let _receive_thread = thread::spawn(move || {
+    let receive_thread = thread::spawn(move || {
       dummy_send(stream_copy);
     });
 
     dummy_send(stream);
+    receive_thread.join().unwrap();
   }
 
   fn dummy_send(stream: TcpStream) {
