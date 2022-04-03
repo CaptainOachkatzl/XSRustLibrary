@@ -49,4 +49,13 @@ impl PacketConnection {
     self.tcp_stream.shutdown(how)?;
     Ok(())
   }
+
+  pub fn try_clone(&self) -> Result<PacketConnection> {
+    let tcp_stream_clone = self.tcp_stream.try_clone()?;
+    Ok(PacketConnection { 
+      tcp_stream: tcp_stream_clone, 
+      packet_assembler: PacketAssembler::new(), 
+      receive_buffer: Vec::clone(&self.receive_buffer)
+    })
+  }
 }
