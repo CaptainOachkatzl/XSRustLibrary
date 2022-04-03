@@ -5,7 +5,7 @@ pub mod network;
 mod tests {
 
   use std::io::Result;
-  use std::net::{TcpListener, TcpStream};
+  use std::net::{TcpListener, TcpStream, Shutdown};
   use std::sync::{Arc, Barrier};
   use std::{cell::RefCell, rc::Rc, thread};
 
@@ -111,5 +111,21 @@ mod tests {
   fn dummy_send(stream: TcpStream) {
     let mut packet_connection = PacketConnection::new(stream, 1024);
     packet_connection.send(&[0 as u8; 8]).expect("sending failed");
+  }
+
+  #[test]
+  fn shutdown_test() {
+    let _listener = TcpListener::bind("0.0.0.0:4567").unwrap();
+    let stream = TcpStream::connect("127.0.0.1:4567").unwrap();
+
+    let connection = PacketConnection::new(stream, 1024);
+    let mut connection2 = connection.try_clone().unwrap();
+
+    let receive_thread = thread::spawn(move || {
+      assert!(connection2.receive().is_err());
+    });
+
+    connection.shutdown(Shutdown::Both).unwrap();
+    receive_thread.join().unwrap();
   }
 }
