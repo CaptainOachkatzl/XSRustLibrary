@@ -1,6 +1,6 @@
 use std::{
   io::{Result, Write, Read},
-  net::TcpStream,
+  net::{TcpStream, Shutdown},
   u8,
 };
 
@@ -43,5 +43,10 @@ impl PacketConnection {
       return Ok(Vec::from(&self.receive_buffer[..size]));
     };
     return self.packet_assembler.assemble(&mut receive_call);
+  }
+
+  pub fn shutdown(&self, how: Shutdown) -> Result<()> {
+    self.tcp_stream.shutdown(how)?;
+    Ok(())
   }
 }
