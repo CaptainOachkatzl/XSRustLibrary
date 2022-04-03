@@ -68,6 +68,6 @@ impl PacketAssembler {
   }
 
   fn is_packet_chunk(&self, data: &Vec<u8>) -> bool {
-    return data[0] == HEADER_ID_PACKET;
+    return data.len() > 0 && data[0] == HEADER_ID_PACKET;
   }
 }

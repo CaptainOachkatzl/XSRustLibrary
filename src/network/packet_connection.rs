@@ -1,6 +1,6 @@
 use std::{
   io::{Result, Write, Read},
-  net::TcpStream,
+  net::{TcpStream, Shutdown},
   u8,
 };
 
@@ -43,5 +43,19 @@ impl PacketConnection {
       return Ok(Vec::from(&self.receive_buffer[..size]));
     };
     return self.packet_assembler.assemble(&mut receive_call);
+  }
+
+  pub fn shutdown(&self, how: Shutdown) -> Result<()> {
+    self.tcp_stream.shutdown(how)?;
+    Ok(())
+  }
+
+  pub fn try_clone(&self) -> Result<PacketConnection> {
+    let tcp_stream_clone = self.tcp_stream.try_clone()?;
+    Ok(PacketConnection { 
+      tcp_stream: tcp_stream_clone, 
+      packet_assembler: PacketAssembler::new(), 
+      receive_buffer: Vec::clone(&self.receive_buffer)
+    })
   }
 }
