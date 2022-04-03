@@ -10,7 +10,7 @@ impl PacketAssembler {
     PacketAssembler { leftover: None }
   }
 
-  pub fn assemble<'a>(&mut self, receive: &mut dyn FnMut() -> Result<Vec<u8>>) -> Result<Vec<u8>> {
+  pub fn assemble(&mut self, receive: &mut dyn FnMut() -> Result<Vec<u8>>) -> Result<Vec<u8>> {
     let mut packet_cursor = 0;
 
     let mut buffer: Vec<u8>;
