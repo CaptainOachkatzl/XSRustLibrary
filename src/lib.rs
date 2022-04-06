@@ -62,10 +62,7 @@ mod tests {
 
     listening_barrier.wait();
 
-    match connect_to_localhost() {
-      Ok(()) => assert!(true),
-      Err(_) => assert!(false),
-    }
+    assert!(connect_to_localhost().is_ok());
 
     listener_thread.join().unwrap();
   }
