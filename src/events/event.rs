@@ -4,7 +4,7 @@ use super::{subscription::create_registered_subscription, Invokable, Subscribabl
 
 /// calls all subscribed handlers on invoke.
 pub struct Event<T> {
-  _subscribers: Vec<Weak<fn(&T)>>,
+  _subscribers: Vec<Weak<dyn Fn(&T) + Sync + Send + 'static>>,
 }
 
 impl<T> Event<T> {
@@ -30,7 +30,7 @@ impl<T> Invokable<T> for Event<T> {
 }
 
 impl<T: 'static> Subscribable<T> for Event<T> {
-  fn subscribe<'r>(&mut self, subscriber: fn(&T)) -> Subscription<T> {
+  fn subscribe<'r>(&mut self, subscriber: Box<dyn Fn(&T) + Sync + Send + 'static>) -> Subscription<T> {
     return create_registered_subscription(&mut self._subscribers, subscriber);
   }
 }
