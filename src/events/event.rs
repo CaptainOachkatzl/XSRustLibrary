@@ -2,7 +2,7 @@ use std::sync::Weak;
 
 use super::{subscription::create_registered_subscription, Invokable, Subscribable, Subscription};
 
-/// calls all subscribers on invoke. not threadsafe.
+/// calls all subscribed handlers on invoke.
 pub struct Event<T> {
   _subscribers: Vec<Weak<fn(&T)>>,
 }
