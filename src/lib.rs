@@ -1,53 +1,53 @@
-pub mod events;
 pub mod network;
+pub mod events;
 
 #[cfg(test)]
 mod tests {
 
-  use std::io::Result;
+use std::io::Result;
   use std::net::{TcpListener, TcpStream, Shutdown};
-  use std::sync::{Arc, Barrier};
+  use std::sync::{Arc, Barrier, Mutex};
   use std::{cell::RefCell, rc::Rc, thread};
 
-  use crate::events::{event::Event, one_shot_event::OneShotEvent, Invokable, Subscribable};
-  use crate::network::packet_connection::PacketConnection;
+  use crate::events::one_shot_event::OneShotEvent;
+use crate::events::{Invokable, Subscribable, InvokableOnce};
+use crate::network::packet_connection::PacketConnection;
+  use crate::events::event::Event;
 
   #[test]
   fn event_test() {
-    let counter = Rc::new(RefCell::new(0));
-    let counter_result = counter.clone();
-    let mut event = Event::<i32>::new();
+    let mut event = Event::<Arc<Mutex<i32>>>::new();
+    let counter = Arc::new(Mutex::new(0));
+    let counter2 = counter.clone();
 
-    let callback = move |x: &i32| {
-      let mut counter_value = counter.borrow_mut();
-      *counter_value += 1;
-      assert_eq!(*x, 3);
+    let handler = |i: &Arc<Mutex<i32>>| {
+      *i.lock().unwrap() += 1;
     };
 
-    let _sub = event.subscribe(Box::new(callback.clone()));
-    event.invoke(3);
-    let _sub = event.subscribe(Box::new(callback));
+    let _subscription = event.subscribe(handler);
 
-    assert_eq!(*counter_result.borrow(), 1);
+    let thread = thread::spawn(move || {
+      event.invoke(&counter2);
+    });
+
+    thread.join().unwrap();
+    assert_eq!(*counter.lock().unwrap(), 1);
   }
 
   #[test]
   fn one_shot_test() {
+    let mut event = OneShotEvent::<Rc<RefCell<i32>>>::new();
     let counter = Rc::new(RefCell::new(0));
-    let counter_result = counter.clone();
-    let mut event = OneShotEvent::<i32>::new();
 
-    let callback = move |x: &i32| {
-      let mut counter_value = counter.borrow_mut();
-      *counter_value += 1;
-      assert_eq!(*x, 3);
+    let callback = |x: &Rc<RefCell<i32>>| {
+      *x.borrow_mut() += 1;
     };
 
-    let _sub = event.subscribe(Box::new(callback.clone()));
-    event.invoke(3);
-    let _sub = event.subscribe(Box::new(callback));
+    let _sub = event.subscribe(callback);
+    event.invoke(counter.clone());
+    let _sub = event.subscribe(callback);
 
-    assert_eq!(*counter_result.borrow(), 2);
+    assert_eq!(*counter.as_ref().borrow(), 2);
   }
 
   #[test]
