@@ -22,11 +22,11 @@ impl PacketReceiveEvent {
     self.started = true;
 
     loop {
-      self.receive_event.invoke(self.packet_connection.receive().unwrap());
+      self.receive_event.invoke(&self.packet_connection.receive().unwrap());
     }
   }
 
-  pub fn subscribe(&mut self, subscriber: Box<dyn Fn(&Vec<u8>)>) -> Subscription<Vec<u8>> {
+  pub fn subscribe(&mut self, subscriber: fn(&Vec<u8>)) -> Subscription<Vec<u8>> {
     return self.receive_event.subscribe(subscriber);
   }
 }
