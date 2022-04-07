@@ -24,7 +24,7 @@ use crate::network::packet_connection::PacketConnection;
       *i.lock().unwrap() += 1;
     };
 
-    let _subscription = event.subscribe(handler);
+    let _subscription = event.subscribe(Box::from(handler));
 
     let thread = thread::spawn(move || {
       event.invoke(&counter2);
@@ -39,11 +39,11 @@ use crate::network::packet_connection::PacketConnection;
     let mut event = OneShotEvent::<Rc<RefCell<i32>>>::new();
     let counter = Rc::new(RefCell::new(0));
 
-    let callback = |x: &Rc<RefCell<i32>>| {
+    let callback = Box::new(|x: &Rc<RefCell<i32>>| {
       *x.borrow_mut() += 1;
-    };
+    });
 
-    let _sub = event.subscribe(callback);
+    let _sub = event.subscribe(callback.clone());
     event.invoke(counter.clone());
     let _sub = event.subscribe(callback);
 

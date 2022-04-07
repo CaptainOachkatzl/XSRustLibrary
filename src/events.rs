@@ -14,5 +14,5 @@ pub trait InvokableOnce<T> {
 }
 
 pub trait Subscribable<T> {
-  fn subscribe(&mut self, event_handler: fn(&T)) -> Subscription<T>;
+  fn subscribe(&mut self, event_handler: Box<dyn Fn(&T) + Sync + Send + 'static>) -> Subscription<T>;
 }
