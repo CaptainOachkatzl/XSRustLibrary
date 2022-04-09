@@ -10,7 +10,7 @@ impl PacketAssembler {
     PacketAssembler { leftover: None }
   }
 
-  pub fn assemble(&mut self, receive: &mut dyn FnMut() -> Result<Vec<u8>>) -> Result<Vec<u8>> {
+  pub fn assemble(&mut self, receive: &mut dyn FnMut() -> Result<Vec<u8>>, shutdown: &dyn Fn() -> Result<()>) -> Result<Vec<u8>> {
     let mut packet_cursor = 0;
 
     let mut buffer: Vec<u8>;
@@ -18,6 +18,14 @@ impl PacketAssembler {
       buffer = self.leftover.take().unwrap();
     } else {
       buffer = receive()?;
+    }
+
+    if self.is_fin(&buffer) {
+      shutdown()?;
+      return Err(Error::new(
+        ErrorKind::InvalidData,
+        "received TCP FIN -> connection closed",
+      ));
     }
 
     if !self.is_packet_chunk(&buffer) {
@@ -65,6 +73,10 @@ impl PacketAssembler {
 
     let size = u32::from_le_bytes(result.unwrap());
     return Ok(size as usize);
+  }
+
+  fn is_fin(&self, data: &Vec<u8>) -> bool {
+    return data.len() == 0;
   }
 
   fn is_packet_chunk(&self, data: &Vec<u8>) -> bool {

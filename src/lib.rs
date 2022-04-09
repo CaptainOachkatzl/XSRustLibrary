@@ -4,15 +4,15 @@ pub mod events;
 #[cfg(test)]
 mod tests {
 
-use std::io::Result;
+use std::io::{Result, Read};
   use std::net::{TcpListener, TcpStream, Shutdown};
   use std::sync::{Arc, Barrier, Mutex};
-  use std::{cell::RefCell, rc::Rc, thread};
+use std::{cell::RefCell, rc::Rc, thread};
 
-  use crate::events::one_shot_event::OneShotEvent;
-use crate::events::{Invokable, Subscribable, InvokableOnce};
-use crate::network::packet_connection::PacketConnection;
-  use crate::events::event::Event;
+  use crate::events::InvokableOnce;
+use crate::events::{event::Event, one_shot_event::OneShotEvent, Invokable, Subscribable};
+  use crate::network::packet_connection::PacketConnection;
+  use crate::network::packet_receive_event::PacketReceiveEvent;
 
   #[test]
   fn event_test() {
@@ -24,7 +24,7 @@ use crate::network::packet_connection::PacketConnection;
       *i.lock().unwrap() += 1;
     };
 
-    let _subscription = event.subscribe(handler);
+    let _subscription = event.subscribe(Box::from(handler));
 
     let thread = thread::spawn(move || {
       event.invoke(&counter2);
@@ -39,11 +39,11 @@ use crate::network::packet_connection::PacketConnection;
     let mut event = OneShotEvent::<Rc<RefCell<i32>>>::new();
     let counter = Rc::new(RefCell::new(0));
 
-    let callback = |x: &Rc<RefCell<i32>>| {
+    let callback = Box::new(|x: &Rc<RefCell<i32>>| {
       *x.borrow_mut() += 1;
-    };
+    });
 
-    let _sub = event.subscribe(callback);
+    let _sub = event.subscribe(callback.clone());
     event.invoke(counter.clone());
     let _sub = event.subscribe(callback);
 
@@ -108,6 +108,48 @@ use crate::network::packet_connection::PacketConnection;
   fn dummy_send(stream: TcpStream) {
     let mut packet_connection = PacketConnection::new(stream, 1024);
     packet_connection.send(&[0 as u8; 8]).expect("sending failed");
+  }
+
+  #[test]
+  fn receive_event_test() {
+
+    let listening_barrier: Arc<Barrier> = Arc::new(Barrier::new(2));
+    let listening_barrier2 = listening_barrier.clone();
+
+    let listener = TcpListener::bind("0.0.0.0:3456").unwrap();
+    let stream = TcpStream::connect("127.0.0.1:3456").unwrap();
+
+    let counter = Arc::new(Mutex::new(0));
+    let counter2 = counter.clone();
+
+    let connection = PacketConnection::new(stream, 1024);
+    let mut event = PacketReceiveEvent::new(connection);
+    let event2 = event.try_clone().unwrap();
+
+    let receive_thread = thread::spawn(move || {
+
+      let receive_callback = Box::new(move |_data: &Vec<u8>| {
+        let mut guard = counter.lock().unwrap();
+        *guard += 1;
+        listening_barrier.wait();
+      });
+      
+      let _sub = event.subscribe(receive_callback);
+      event.start();
+    });
+
+    let mut accept_stream = PacketConnection::new(listener.accept().unwrap().0, 1024);
+    accept_stream.send(&[0 as u8; 4]).unwrap();
+
+    listening_barrier2.wait();
+    
+    event2.stop().unwrap();
+
+    // wait for shutdown and acknowledge it -> prevents timeout of receive thread
+    assert!(accept_stream.receive().is_err());
+    
+    receive_thread.join().unwrap();
+    assert_eq!(*counter2.lock().unwrap(), 1);
   }
 
   #[test]

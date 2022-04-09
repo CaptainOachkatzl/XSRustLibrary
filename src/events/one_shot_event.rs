@@ -6,7 +6,7 @@ use super::{subscription::create_registered_subscription, Subscribable, Subscrip
 /// first invoke will get called immediately with args from the first invoke.
 /// not threadsafe.
 pub struct OneShotEvent<T> {
-  _subscribers: Vec<Weak<fn(&T)>>,
+  _subscribers: Vec<Weak<dyn Fn(&T) + Sync + Send + 'static>>,
   _args: Option<T>,
 }
 
@@ -39,7 +39,7 @@ impl<T> InvokableOnce<T> for OneShotEvent<T> {
 }
 
 impl<T: 'static> Subscribable<T> for OneShotEvent<T> {
-  fn subscribe(&mut self, subscriber: fn(&T)) -> Subscription<T> {
+  fn subscribe(&mut self, subscriber: Box<dyn Fn(&T) + Sync + Send + 'static>) -> Subscription<T> {
     match &self._args {
       Some(v) => {
         subscriber(&v);
