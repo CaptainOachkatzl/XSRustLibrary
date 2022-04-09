@@ -3,7 +3,6 @@ pub mod events;
 
 #[cfg(test)]
 mod tests {
-  use std::fs::File;
   use std::io::{Result, Write};
   use std::net::{TcpListener, TcpStream, Shutdown};
   use std::sync::{Arc, Barrier, Mutex};
