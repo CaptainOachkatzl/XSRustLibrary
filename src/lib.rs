@@ -3,14 +3,14 @@ pub mod events;
 
 #[cfg(test)]
 mod tests {
-
-use std::io::Result;
+  use std::fs::File;
+  use std::io::{Result, Write};
   use std::net::{TcpListener, TcpStream, Shutdown};
   use std::sync::{Arc, Barrier, Mutex};
-use std::{cell::RefCell, rc::Rc, thread};
+  use std::{cell::RefCell, rc::Rc, thread};
 
   use crate::events::InvokableOnce;
-use crate::events::{event::Event, one_shot_event::OneShotEvent, Invokable, Subscribable};
+  use crate::events::{event::Event, one_shot_event::OneShotEvent, Invokable, Subscribable};
   use crate::network::packet_connection::PacketConnection;
   use crate::network::packet_receive_event::PacketReceiveEvent;
 
