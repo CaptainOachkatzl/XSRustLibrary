@@ -1,4 +1,4 @@
-use super::constants::{HEADER_ID_PACKET, HEADER_SIZE_ID, HEADER_SIZE_PACKET_SIZE};
+use super::constants::HEADER_SIZE;
 use std::io::{Error, ErrorKind, Result};
 
 pub struct PacketAssembler {
@@ -28,17 +28,10 @@ impl PacketAssembler {
       ));
     }
 
-    if !self.is_packet_chunk(&buffer) {
-      return Err(Error::new(
-        ErrorKind::InvalidData,
-        "invalid packet chunk header",
-      ));
-    }
-
     // create a new packet
     let packet_size = self.get_packet_size(&buffer)?;
     let mut packet: Vec<u8> = vec![0 as u8; packet_size];
-    buffer.drain(..HEADER_SIZE_ID + HEADER_SIZE_PACKET_SIZE);
+    buffer.drain(..HEADER_SIZE);
 
     while packet_cursor < packet_size {
       if buffer.len() > 0 {
@@ -63,7 +56,7 @@ impl PacketAssembler {
   }
 
   fn get_packet_size(&self, data: &Vec<u8>) -> Result<usize> {
-    let result = data[1..5].try_into();
+    let result = data[..4].try_into();
     if result.is_err() {
       return Err(Error::new(
         ErrorKind::InvalidData,
@@ -77,9 +70,5 @@ impl PacketAssembler {
 
   fn is_fin(&self, data: &Vec<u8>) -> bool {
     return data.len() == 0;
-  }
-
-  fn is_packet_chunk(&self, data: &Vec<u8>) -> bool {
-    return data.len() > 0 && data[0] == HEADER_ID_PACKET;
   }
 }

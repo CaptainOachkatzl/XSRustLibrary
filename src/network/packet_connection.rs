@@ -4,7 +4,7 @@ use std::{
   u8,
 };
 
-use super::{packet_assembler::PacketAssembler, constants::{HEADER_ID_PACKET}};
+use super::{packet_assembler::PacketAssembler};
 
 pub struct PacketConnection {
   tcp_stream: TcpStream,
@@ -26,18 +26,9 @@ impl PacketConnection {
   }
 
   pub fn send(&mut self, data: &[u8]) -> Result<()> {
-    self.write_header(data.len())?;
+    self.tcp_stream.write(&(data.len() as u32).to_le_bytes())?;   	// header
     self.tcp_stream.write(data)?;
     self.tcp_stream.flush()?;
-    Ok(())
-  }
-
-  fn write_header(&mut self, length: usize) -> Result<()> {
-    let mut header = [0 as u8; 5];
-    // indicate data package with first byte 0x00
-    header[0] = HEADER_ID_PACKET;
-    header[1..5].copy_from_slice(&(length as u32).to_le_bytes());
-    self.tcp_stream.write(&header)?;
     Ok(())
   }
 
