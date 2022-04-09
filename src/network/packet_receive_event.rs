@@ -34,7 +34,8 @@ impl PacketReceiveEvent {
     }
 
     while !*self.stop.lock().unwrap() {
-      match self.packet_connection.borrow_mut().receive() {
+      let receive_result = self.packet_connection.borrow_mut().receive();
+      match receive_result {
         Ok(v) => self.receive_event.borrow_mut().invoke(&v),
         _ => self.stop().unwrap(),
       };
@@ -67,7 +68,7 @@ impl PacketReceiveEvent {
       return Ok(());
     }
     
-    self.packet_connection.borrow_mut().shutdown(Shutdown::Both)?;
+    self.packet_connection.borrow().shutdown(Shutdown::Both)?;
     Ok(())
   }
 
