@@ -1,6 +1,11 @@
-use aes_gcm::{aead::{generic_array::GenericArray, Aead, Payload}, Aes256Gcm, NewAead};
 use rand_core::{OsRng, RngCore};
 use x25519_dalek::{EphemeralSecret, PublicKey};
+use aes::Aes256;
+use aes::cipher::{KeyIvInit, block_padding::Pkcs7};
+use aes::cipher::{BlockEncryptMut, BlockDecryptMut};
+
+type Aes256Enc = cbc::Encryptor<Aes256>;
+type Aes256Dec = cbc::Decryptor<Aes256>;
 
 static HANDSHAKE_CONFIRMATION: &'static [u8] =
   &[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16];
@@ -24,22 +29,19 @@ impl Ec25519Aes256Crypto {
     // calculate shared secret
     let shared_secret = secret.diffie_hellman(&PublicKey::from(other_pub_key));
     // set shared secret in aes
-    let cipher = Aes256Gcm::new(GenericArray::from_slice(shared_secret.as_bytes()));
+    let mut nonce = [0 as u8; 16];
+    rng.fill_bytes(&mut nonce);
+    let cipher = Aes256Dec::new(shared_secret.as_bytes().into(), &nonce.into());
     // send IV
-    let mut nonce_bytes = [0 as u8; 12];
-    rng.fill_bytes(&mut nonce_bytes);
-    send(&nonce_bytes);
-    let nonce = GenericArray::from_slice(&nonce_bytes);
+    send(&nonce);
 
     // receive secret
-    let payload = Payload {
-      msg: &receive(),
-      aad: &[0 as u8; 0],
-    };
+    let mut confirmation_block = [0 as u8; 32];
+    confirmation_block.copy_from_slice(&receive());
 
     // assert secret
-    let decrypted_confirmation = cipher.decrypt(nonce, payload).unwrap();
-    return decrypted_confirmation == HANDSHAKE_CONFIRMATION;
+    cipher.decrypt_padded_mut::<Pkcs7>(&mut confirmation_block).unwrap();
+    return &confirmation_block[..16] == HANDSHAKE_CONFIRMATION;
   }
 
   pub fn handshake_passive(
@@ -55,21 +57,18 @@ impl Ec25519Aes256Crypto {
     send(public_key.as_bytes());
     // calculate shared secret
     let shared_secret = secret.diffie_hellman(&PublicKey::from(other_pub_key));
-    // set shared secret in aes
-    let cipher = Aes256Gcm::new(GenericArray::from_slice(shared_secret.as_bytes()));
     // receive iv/nonce
-    let mut nonce_bytes = [0 as u8; 12];
-    nonce_bytes.clone_from_slice(&receive());
-    let nonce = GenericArray::from_slice(&nonce_bytes);
-    // send encryped secret
-    let payload = Payload {
-      msg: HANDSHAKE_CONFIRMATION,
-      aad: &[0 as u8; 0],
-    };
+    let mut nonce = [0 as u8; 16];
+    nonce.clone_from_slice(&receive());
+    // set shared secret in aes
+    let cipher = Aes256Enc::new(shared_secret.as_bytes().into(), &nonce.into());
 
-    // assert secret
-    let encryped_confirmation = cipher.encrypt(nonce, payload).unwrap();
-    send(&encryped_confirmation);
+    let mut confirmation_block = [0 as u8; 32];
+    confirmation_block[..16].copy_from_slice(HANDSHAKE_CONFIRMATION);
+    // send encryped secret
+    let _result = cipher.encrypt_padded_mut::<Pkcs7>(&mut confirmation_block, 16);
+    send(&confirmation_block);
+
     return true;
   }
 }
