@@ -2,7 +2,7 @@ use std::{
   io::Result,
   cell::RefCell,
   sync::{
-    Mutex, Arc,
+    atomic::{AtomicBool, Ordering},
   }, net::Shutdown,
 };
 
@@ -13,8 +13,8 @@ use super::packet_connection::PacketConnection;
 pub struct PacketReceiveEvent {
   packet_connection: RefCell<PacketConnection>,
   receive_event: RefCell<Event<Vec<u8>>>,
-  started: Arc<Mutex<bool>>,
-  stop: Arc<Mutex<bool>>,
+  started: AtomicBool,
+  stop:AtomicBool,
 }
 
 impl PacketReceiveEvent {
@@ -22,8 +22,8 @@ impl PacketReceiveEvent {
     PacketReceiveEvent {
       packet_connection: RefCell::new(packet_connection),
       receive_event: RefCell::new(Event::new()),
-      started: Arc::new(Mutex::new(false)),
-      stop: Arc::new(Mutex::new(false)),
+      started: AtomicBool::new(false),
+      stop: AtomicBool::new(false),
     }
   }
 
@@ -33,7 +33,7 @@ impl PacketReceiveEvent {
       return;
     }
 
-    while !*self.stop.lock().unwrap() {
+    while !self.stop.load(Ordering::SeqCst) {
       let receive_result = self.packet_connection.borrow_mut().receive();
       match receive_result {
         Ok(v) => self.receive_event.borrow_mut().invoke(&v),
@@ -45,22 +45,16 @@ impl PacketReceiveEvent {
   }
 
   fn locked_start_check(&self) -> bool {
-    return self.compare_exchange_set_bool(&self.started);
+    return self.set_atomic_bool(&self.started);
   }
 
   fn locked_stop_check(&self) -> bool {
-    return self.compare_exchange_set_bool(&self.stop);
+    return self.set_atomic_bool(&self.stop);
   }
 
   // returns true if the bool was set to true
-  fn compare_exchange_set_bool(&self, bool_mutex: &Mutex<bool>) -> bool {
-    let mut lock = bool_mutex.lock().unwrap();
-    if *lock {
-      return false;
-    }
-
-    *lock = true;
-    return true;
+  fn set_atomic_bool(&self, value: &AtomicBool) -> bool {
+    return value.compare_exchange(false, true, Ordering::SeqCst, Ordering::SeqCst).is_ok();
   }
 
   pub fn stop(&self) -> Result<()> {
@@ -80,8 +74,8 @@ impl PacketReceiveEvent {
     Ok(PacketReceiveEvent{
       packet_connection: RefCell::new(self.packet_connection.borrow().try_clone()?),
       receive_event: RefCell::new(Event::new()),
-      started: self.started.clone(),
-      stop: self.stop.clone(),
+      started: AtomicBool::new(self.started.load(Ordering::SeqCst)),
+      stop: AtomicBool::new(self.stop.load(Ordering::SeqCst)),
     })
   }
 }
