@@ -1,6 +1,6 @@
 use std::{collections::BTreeMap, sync::{Barrier, Arc}, thread};
 
-use xs_bevy_core_2d::{Counter, FactoryCache};
+use xs_rust_library::{FactoryCache, Counter};
 
 #[test]
 fn validate_results() {

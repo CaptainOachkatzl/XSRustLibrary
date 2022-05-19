@@ -51,12 +51,11 @@ where
 ///   as_f64 as f64
 /// }
 ///
-/// let factory_cache = FactoryCache::new(Box::new(BTreeMap::new()), Box::new(|x| intensive_calculation(*x)));
+/// let factory_cache = FactoryCache::new(BTreeMap::new(), Box::new(|x: f64| intensive_calculation(x)));
 /// println!("{}", factory_cache.get(3)); // takes 2 seconds to write "3"
 /// println!("{}", factory_cache.get(5)); // takes 2 seconds to write "5"
 /// println!("{}", factory_cache.get(3)); // instantly writes "3"
 /// ```
-///
 pub struct FactoryCache<K, V, C>
 where
   C: Cache<K, Arc<V>>,
