@@ -46,12 +46,12 @@ where
 /// # Examples
 ///
 /// ```
-/// fn intensive_calculation(as_f64: usize) -> f64 {
+/// fn intensive_calculation(as_u32: usize) -> u32 {
 ///   thread::sleep(Duration::from_secs(2));
-///   as_f64 as f64
+///   as_u32 as u32
 /// }
 ///
-/// let factory_cache = FactoryCache::new(BTreeMap::new(), Box::new(|x: f64| intensive_calculation(x)));
+/// let factory_cache = FactoryCache::new(BTreeMap::new(), Box::new(|x: usize| intensive_calculation(x)));
 /// println!("{}", factory_cache.get(3)); // takes 2 seconds to write "3"
 /// println!("{}", factory_cache.get(5)); // takes 2 seconds to write "5"
 /// println!("{}", factory_cache.get(3)); // instantly writes "3"
