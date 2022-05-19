@@ -1,5 +1,6 @@
 pub mod network;
 pub mod events;
+pub mod factory_cache;
 
 #[cfg(test)]
 mod tests {
