@@ -26,8 +26,8 @@ impl PacketConnection {
     }
 
     pub fn send(&mut self, data: &[u8]) -> Result<()> {
-        self.tcp_stream.write(&(data.len() as u32).to_le_bytes())?; // header
-        self.tcp_stream.write(data)?;
+        self.tcp_stream.write_all(&(data.len() as u32).to_le_bytes())?; // header
+        self.tcp_stream.write_all(data)?;
         self.tcp_stream.flush()?;
         Ok(())
     }
