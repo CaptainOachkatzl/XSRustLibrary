@@ -1,4 +1,4 @@
-use crate::subscription::SubscriptionStorage;
+use crate::{subscription::SubscriptionStorage, EventHandler};
 
 use super::{Invokable, Subscribable, Subscription};
 
@@ -15,20 +15,26 @@ impl<T: 'static> Event<T> {
     }
 }
 
+impl<T: 'static> Default for Event<T> {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl<T: 'static> Invokable<T> for Event<T> {
     fn invoke(&mut self, arg: &T) {
         self.subscribers.inner_mut().retain(|subscriber| match subscriber.upgrade() {
             Some(v) => {
-                v(&arg);
-                return true;
+                v(arg);
+                true
             }
-            None => return false,
+            None => false,
         });
     }
 }
 
 impl<T: 'static> Subscribable<T> for Event<T> {
-    fn subscribe<'r>(&mut self, event_handler: Box<dyn Fn(&T) + Sync + Send + 'static>) -> Subscription<T> {
-        return self.subscribers.add_event_handler(event_handler);
+    fn subscribe<'r>(&mut self, event_handler: Box<EventHandler<T>>) -> Subscription<T> {
+        self.subscribers.add_event_handler(event_handler)
     }
 }

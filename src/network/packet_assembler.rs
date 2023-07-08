@@ -5,6 +5,12 @@ pub struct PacketAssembler {
     leftover: Option<Vec<u8>>,
 }
 
+impl Default for PacketAssembler {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl PacketAssembler {
     pub fn new() -> PacketAssembler {
         PacketAssembler { leftover: None }
@@ -27,18 +33,18 @@ impl PacketAssembler {
 
         // create a new packet
         let packet_size = self.get_packet_size(&buffer)?;
-        let mut packet: Vec<u8> = vec![0 as u8; packet_size];
+        let mut packet: Vec<u8> = vec![0_u8; packet_size];
         buffer.drain(..HEADER_SIZE);
 
         while packet_cursor < packet_size {
-            if buffer.len() > 0 {
+            if !buffer.is_empty() {
                 if packet_cursor + buffer.len() > packet_size {
                     packet.clone_from_slice(&buffer[..packet_size - packet_cursor]);
                     self.leftover = Some(buffer[packet_size - packet_cursor..].to_vec());
                     break;
                 } else {
                     packet[packet_cursor..packet_cursor + buffer.len()].clone_from_slice(&buffer);
-                    packet_cursor = packet_cursor + buffer.len();
+                    packet_cursor += buffer.len();
 
                     if packet_cursor == packet_size {
                         break;
@@ -52,17 +58,17 @@ impl PacketAssembler {
         Ok(packet)
     }
 
-    fn get_packet_size(&self, data: &Vec<u8>) -> Result<usize> {
+    fn get_packet_size(&self, data: &[u8]) -> Result<usize> {
         let result = data[..4].try_into();
         if result.is_err() {
             return Err(Error::new(ErrorKind::InvalidData, "invalid packet size header"));
         }
 
         let size = u32::from_le_bytes(result.unwrap());
-        return Ok(size as usize);
+        Ok(size as usize)
     }
 
     fn is_fin(&self, data: &Vec<u8>) -> bool {
-        return data.len() == 0;
+        data.is_empty()
     }
 }

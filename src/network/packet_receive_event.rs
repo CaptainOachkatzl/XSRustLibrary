@@ -9,6 +9,8 @@ use crate::events::{event::Event, subscription::Subscription, Invokable, Subscri
 
 use super::packet_connection::PacketConnection;
 
+type EventHandler = dyn Fn(&Vec<u8>) + Send + Sync;
+
 pub struct PacketReceiveEvent {
     packet_connection: RefCell<PacketConnection>,
     receive_event: RefCell<Event<Vec<u8>>>,
@@ -39,21 +41,19 @@ impl PacketReceiveEvent {
                 _ => self.stop().unwrap(),
             };
         }
-
-        return;
     }
 
     fn locked_start_check(&self) -> bool {
-        return self.set_atomic_bool(&self.started);
+        self.set_atomic_bool(&self.started)
     }
 
     fn locked_stop_check(&self) -> bool {
-        return self.set_atomic_bool(&self.stop);
+        self.set_atomic_bool(&self.stop)
     }
 
     // returns true if the bool was set to true
     fn set_atomic_bool(&self, value: &AtomicBool) -> bool {
-        return value.compare_exchange(false, true, Ordering::SeqCst, Ordering::SeqCst).is_ok();
+        value.compare_exchange(false, true, Ordering::SeqCst, Ordering::SeqCst).is_ok()
     }
 
     pub fn stop(&self) -> Result<()> {
@@ -65,8 +65,8 @@ impl PacketReceiveEvent {
         Ok(())
     }
 
-    pub fn subscribe(&mut self, subscriber: Box<dyn Fn(&Vec<u8>) + Send + Sync + 'static>) -> Subscription<Vec<u8>> {
-        return self.receive_event.borrow_mut().subscribe(subscriber);
+    pub fn subscribe(&mut self, subscriber: Box<EventHandler>) -> Subscription<Vec<u8>> {
+        self.receive_event.borrow_mut().subscribe(subscriber)
     }
 
     pub fn try_clone(&self) -> Result<PacketReceiveEvent> {

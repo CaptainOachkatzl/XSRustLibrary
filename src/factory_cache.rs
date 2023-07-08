@@ -86,6 +86,6 @@ where
         let unlocked_cache = &mut *write_lock;
         let val = Arc::new((self.factory_fn)(key.clone()));
         unlocked_cache.insert(key, val.clone());
-        return val;
+        val
     }
 }

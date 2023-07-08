@@ -4,6 +4,8 @@ pub mod subscription;
 
 use self::subscription::Subscription;
 
+pub type EventHandler<T> = dyn Fn(&T) + Sync + Send;
+
 pub trait Invokable<T> {
     fn invoke(&mut self, arg: &T);
 }
@@ -14,5 +16,5 @@ pub trait InvokableOnce<T> {
 }
 
 pub trait Subscribable<T> {
-    fn subscribe(&mut self, event_handler: Box<dyn Fn(&T) + Sync + Send + 'static>) -> Subscription<T>;
+    fn subscribe(&mut self, event_handler: Box<EventHandler<T>>) -> Subscription<T>;
 }

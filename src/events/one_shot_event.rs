@@ -1,6 +1,6 @@
 use std::sync::Arc;
 
-use crate::subscription::SubscriptionStorage;
+use crate::{subscription::SubscriptionStorage, EventHandler};
 
 use super::{InvokableOnce, Subscribable, Subscription};
 
@@ -21,6 +21,12 @@ impl<T: 'static> OneShotEvent<T> {
     }
 }
 
+impl<T: 'static> Default for OneShotEvent<T> {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl<T: 'static> InvokableOnce<T> for OneShotEvent<T> {
     fn invoke(&mut self, arg: T) {
         if self.args.is_some() {
@@ -28,9 +34,8 @@ impl<T: 'static> InvokableOnce<T> for OneShotEvent<T> {
         }
 
         for subscriber in self.subscribers.inner_mut() {
-            match subscriber.upgrade() {
-                Some(v) => v(&arg),
-                None => (),
+            if let Some(event_handler) = subscriber.upgrade() {
+                event_handler(&arg);
             }
         }
 
@@ -41,13 +46,13 @@ impl<T: 'static> InvokableOnce<T> for OneShotEvent<T> {
 }
 
 impl<T: 'static> Subscribable<T> for OneShotEvent<T> {
-    fn subscribe(&mut self, event_handler: Box<dyn Fn(&T) + Sync + Send + 'static>) -> Subscription<T> {
+    fn subscribe(&mut self, event_handler: Box<EventHandler<T>>) -> Subscription<T> {
         match &self.args {
             Some(v) => {
-                event_handler(&v);
-                return Subscription::new(Arc::new(event_handler));
+                event_handler(v);
+                Subscription::new(Arc::new(event_handler))
             }
-            None => return self.subscribers.add_event_handler(event_handler),
+            None => self.subscribers.add_event_handler(event_handler),
         }
     }
 }

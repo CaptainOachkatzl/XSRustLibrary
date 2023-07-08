@@ -21,7 +21,7 @@ impl PacketConnection {
             shutdown_ref_stream: tcp_stream.try_clone().unwrap(),
             tcp_stream,
             packet_assembler: PacketAssembler::new(),
-            receive_buffer: vec![0 as u8; receive_buffer_size],
+            receive_buffer: vec![0_u8; receive_buffer_size],
         }
     }
 
@@ -35,14 +35,12 @@ impl PacketConnection {
     pub fn receive(&mut self) -> Result<Vec<u8>> {
         let mut receive_call = || {
             let size = self.tcp_stream.read(&mut self.receive_buffer)?;
-            return Ok(Vec::from(&self.receive_buffer[..size]));
+            Ok(Vec::from(&self.receive_buffer[..size]))
         };
 
-        let shutdown_call = || {
-            return self.shutdown_ref_stream.shutdown(Shutdown::Both);
-        };
+        let shutdown_call = || self.shutdown_ref_stream.shutdown(Shutdown::Both);
 
-        return self.packet_assembler.assemble(&mut receive_call, &shutdown_call);
+        self.packet_assembler.assemble(&mut receive_call, &shutdown_call)
     }
 
     pub fn shutdown(&self, how: Shutdown) -> Result<()> {
