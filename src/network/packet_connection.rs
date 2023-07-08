@@ -40,7 +40,7 @@ impl PacketConnection {
 
         let shutdown_call = || self.shutdown_ref_stream.shutdown(Shutdown::Both);
 
-        self.packet_assembler.assemble(&mut receive_call, &shutdown_call)
+        self.packet_assembler.assemble(&mut receive_call, shutdown_call)
     }
 
     pub fn shutdown(&self, how: Shutdown) -> Result<()> {
