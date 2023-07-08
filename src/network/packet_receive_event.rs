@@ -1,15 +1,26 @@
 use std::{
     cell::RefCell,
-    io::Result,
     net::Shutdown,
     sync::atomic::{AtomicBool, Ordering},
 };
 
-use crate::events::{event::Event, subscription::Subscription, Invokable, Subscribable};
+use displaydoc::Display;
+use thiserror::Error;
+
+use crate::{
+    events::{event::Event, subscription::Subscription, Invokable, Subscribable},
+    packet_connection,
+};
 
 use super::packet_connection::PacketConnection;
 
 type EventHandler = dyn Fn(&Vec<u8>) + Send + Sync;
+
+#[derive(Debug, Display, Error)]
+pub enum Error {
+    /// {0}
+    PacketConnection(#[from] packet_connection::Error),
+}
 
 pub struct PacketReceiveEvent {
     packet_connection: RefCell<PacketConnection>,
@@ -56,7 +67,7 @@ impl PacketReceiveEvent {
         value.compare_exchange(false, true, Ordering::SeqCst, Ordering::SeqCst).is_ok()
     }
 
-    pub fn stop(&self) -> Result<()> {
+    pub fn stop(&self) -> Result<(), Error> {
         if !self.locked_stop_check() {
             return Ok(());
         }
@@ -69,7 +80,7 @@ impl PacketReceiveEvent {
         self.receive_event.borrow_mut().subscribe(subscriber)
     }
 
-    pub fn try_clone(&self) -> Result<PacketReceiveEvent> {
+    pub fn try_clone(&self) -> Result<PacketReceiveEvent, Error> {
         Ok(PacketReceiveEvent {
             packet_connection: RefCell::new(self.packet_connection.borrow().try_clone()?),
             receive_event: RefCell::new(Event::new()),

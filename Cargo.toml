@@ -6,7 +6,9 @@ authors = ["xsware.at"]
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 [dependencies]
-parking_lot = "0.12.0"
+parking_lot = "0.12"
+thiserror = "1.0"
+displaydoc = "0.2"
 
 [lib]
 doctest = false

@@ -1,6 +1,6 @@
 #[cfg(test)]
 mod network_tests {
-    use std::{io::Result, net::*, sync::*, thread};
+    use std::{net::*, sync::*, thread};
 
     use xs_rust_library::{packet_connection::PacketConnection, packet_receive_event::PacketReceiveEvent};
 
@@ -11,7 +11,7 @@ mod network_tests {
         let listening_copy = listening_barrier.clone();
 
         let listener_thread = thread::spawn(move || {
-            start_listening(listening_copy).unwrap();
+            start_listening(listening_copy);
         });
 
         listening_barrier.wait();
@@ -21,17 +21,16 @@ mod network_tests {
         listener_thread.join().unwrap();
     }
 
-    fn start_listening(listening: Arc<Barrier>) -> Result<()> {
+    fn start_listening(listening: Arc<Barrier>) {
         let listener = TcpListener::bind("0.0.0.0:1234").unwrap();
 
         listening.wait();
 
         let accept_stream: TcpStream = listener.accept().unwrap().0;
         let mut accept_connection = PacketConnection::new(accept_stream, 1024);
-        accept_connection.send(b"test123")?;
-        accept_connection.send(b"abc")?;
-        accept_connection.send(&[5 as u8; 10 * 1024 * 1024])?;
-        Ok(())
+        accept_connection.send(b"test123").unwrap();
+        accept_connection.send(b"abc").unwrap();
+        accept_connection.send(&[5 as u8; 10 * 1024 * 1024]).unwrap();
     }
 
     fn connect_to_localhost() -> std::io::Result<()> {

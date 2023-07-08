@@ -1,16 +1,28 @@
 use std::{
-    io::{Read, Result, Write},
+    io::Write,
     net::{Shutdown, TcpStream},
     u8,
 };
 
+use displaydoc::Display;
+use thiserror::Error;
+
+use crate::packet_assembler;
+
 use super::packet_assembler::PacketAssembler;
+
+#[derive(Debug, Display, Error)]
+pub enum Error {
+    /// IO error: {0}
+    IOError(#[from] std::io::Error),
+    /// Failed to assemble packet: {0}
+    PacketAssembly(#[from] packet_assembler::Error),
+}
 
 pub struct PacketConnection {
     tcp_stream: TcpStream,
     shutdown_ref_stream: TcpStream,
     packet_assembler: PacketAssembler,
-    receive_buffer: Vec<u8>,
 }
 
 impl PacketConnection {
@@ -20,40 +32,37 @@ impl PacketConnection {
             // underlying socket guarantees threadsafety
             shutdown_ref_stream: tcp_stream.try_clone().unwrap(),
             tcp_stream,
-            packet_assembler: PacketAssembler::new(),
-            receive_buffer: vec![0_u8; receive_buffer_size],
+            packet_assembler: PacketAssembler::new(receive_buffer_size),
         }
     }
 
-    pub fn send(&mut self, data: &[u8]) -> Result<()> {
+    pub fn send(&mut self, data: &[u8]) -> Result<(), Error> {
         self.tcp_stream.write_all(&(data.len() as u32).to_le_bytes())?; // header
         self.tcp_stream.write_all(data)?;
         self.tcp_stream.flush()?;
         Ok(())
     }
 
-    pub fn receive(&mut self) -> Result<Vec<u8>> {
-        let mut receive_call = || {
-            let size = self.tcp_stream.read(&mut self.receive_buffer)?;
-            Ok(Vec::from(&self.receive_buffer[..size]))
-        };
-
-        let shutdown_call = || self.shutdown_ref_stream.shutdown(Shutdown::Both);
-
-        self.packet_assembler.assemble(&mut receive_call, shutdown_call)
+    pub fn receive<'a>(&mut self) -> Result<Vec<u8>, Error> {
+        match self.packet_assembler.assemble(&mut self.tcp_stream) {
+            Ok(v) => Ok(v),
+            Err(e) => {
+                self.shutdown(Shutdown::Both)?;
+                Err(Error::PacketAssembly(e))
+            }
+        }
     }
 
-    pub fn shutdown(&self, how: Shutdown) -> Result<()> {
+    pub fn shutdown(&self, how: Shutdown) -> Result<(), Error> {
         self.shutdown_ref_stream.shutdown(how)?;
         Ok(())
     }
 
-    pub fn try_clone(&self) -> Result<PacketConnection> {
+    pub fn try_clone(&self) -> Result<PacketConnection, Error> {
         Ok(PacketConnection {
             tcp_stream: self.tcp_stream.try_clone()?,
             shutdown_ref_stream: self.tcp_stream.try_clone()?,
-            packet_assembler: PacketAssembler::new(),
-            receive_buffer: Vec::clone(&self.receive_buffer),
+            packet_assembler: self.packet_assembler.clone(),
         })
     }
 }
