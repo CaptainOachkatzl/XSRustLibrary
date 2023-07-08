@@ -1,4 +1,4 @@
-use super::{constants::HEADER_SIZE, packet_buffer::DataBuffer};
+use super::{constants::HEADER_SIZE, data_buffer::DataBuffer};
 use displaydoc::Display;
 use std::{io::Read, net::TcpStream};
 use thiserror::Error;
@@ -10,46 +10,35 @@ pub enum Error {
     /// Invalid packet data
     InvalidData,
     /// Socket error while trying to receive data
-    ReceiveError,
+    ReceiveError(#[from] std::io::Error),
 }
 
 #[derive(Clone)]
 pub struct PacketAssembler {
-    receive_buffer: Vec<u8>,
-    leftover_position: Option<(usize, usize)>,
+    data_buffer: DataBuffer,
 }
 
 impl PacketAssembler {
     pub fn new(buffer_size: usize) -> PacketAssembler {
         PacketAssembler {
-            receive_buffer: vec![0_u8; buffer_size],
-            leftover_position: None,
+            data_buffer: DataBuffer::new(buffer_size),
         }
     }
 
     pub fn assemble(&mut self, tcp_stream: &mut TcpStream) -> Result<Vec<u8>, Error> {
-        let mut data = if let Some((start, end)) = self.leftover_position {
-            DataBuffer::with_starting_position(&self.receive_buffer[..end], start)
-        } else {
-            receive(tcp_stream, &mut self.receive_buffer)?
-        };
+        if self.data_buffer.is_empty() {
+            receive(tcp_stream, &mut self.data_buffer)?
+        }
 
-        if is_fin(&data) {
+        if is_fin(&self.data_buffer) {
             return Err(Error::ReceivedFin);
         }
 
         // create a new packet
-        let packet_size = get_packet_size(&mut data)?;
+        let packet_size = get_packet_size(&mut self.data_buffer)?;
         let mut packet: Vec<u8> = vec![0_u8; packet_size];
 
-        self.leftover_position = fill_packet(
-            &mut packet,
-            packet_size,
-            data.get_current_position(),
-            data.get_end_position(),
-            tcp_stream,
-            &mut self.receive_buffer,
-        )?;
+        fill_packet(&mut packet, packet_size, &mut self.data_buffer, tcp_stream)?;
         Ok(packet)
     }
 }
@@ -69,22 +58,15 @@ fn get_packet_size(data: &mut DataBuffer) -> Result<usize, Error> {
     Ok(size as usize)
 }
 
-fn fill_packet<'a, 'b>(
-    packet: &mut [u8],
-    packet_size: usize,
-    current_pos: usize,
-    end_pos: usize,
-    tcp_stream: &'b mut TcpStream,
-    buffer: &'a mut Vec<u8>,
-) -> Result<Option<(usize, usize)>, Error> {
+fn fill_packet(packet: &mut [u8], packet_size: usize, data: &mut DataBuffer, tcp_stream: &mut TcpStream) -> Result<(), Error> {
     let mut packet_cursor = 0;
-    let mut data = DataBuffer::with_starting_position(&buffer[..end_pos], current_pos);
     while packet_cursor < packet_size {
         if !data.is_empty() {
-            if packet_cursor + data.remaining() > packet_size {
-                // since too much data is availabe for the current packet, fill it up and store the unused data as leftover
-                packet.clone_from_slice(&data.take(packet_size - packet_cursor));
-                return Ok(Some((data.get_current_position(), data.get_end_position())));
+            let remaining_packet_space = packet_size - packet_cursor;
+            if data.remaining() > remaining_packet_space {
+                // since too much data is availabe for the current packet, fill it up and keep unused data in the buffer
+                packet.clone_from_slice(data.take(remaining_packet_space));
+                break;
             } else {
                 // all the data fits in the current packet
                 let remaining_data = data.take_to_end();
@@ -97,13 +79,14 @@ fn fill_packet<'a, 'b>(
                 }
             }
         }
-        data = receive(tcp_stream, buffer)?;
+        receive(tcp_stream, data)?;
     }
 
-    Ok(None)
+    Ok(())
 }
 
-fn receive<'a, 'b>(tcp_stream: &'b mut TcpStream, buffer: &'a mut Vec<u8>) -> Result<DataBuffer<'a>, Error> {
-    let size = tcp_stream.read(buffer).map_err(|_| Error::InvalidData)?;
-    Ok(DataBuffer::new(&buffer[..size]))
+fn receive(tcp_stream: &mut TcpStream, buffer: &mut DataBuffer) -> Result<(), Error> {
+    let size = tcp_stream.read(buffer.get_mut_buffer())?;
+    buffer.set_positions(0, size);
+    Ok(())
 }

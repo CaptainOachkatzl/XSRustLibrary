@@ -43,11 +43,11 @@ impl PacketConnection {
         Ok(())
     }
 
-    pub fn receive<'a>(&mut self) -> Result<Vec<u8>, Error> {
+    pub fn receive(&mut self) -> Result<Vec<u8>, Error> {
         match self.packet_assembler.assemble(&mut self.tcp_stream) {
             Ok(v) => Ok(v),
             Err(e) => {
-                self.shutdown(Shutdown::Both)?;
+                self.tcp_stream.shutdown(Shutdown::Both)?;
                 Err(Error::PacketAssembly(e))
             }
         }
