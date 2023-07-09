@@ -7,16 +7,16 @@ use std::{
 use displaydoc::Display;
 use thiserror::Error;
 
-use crate::packet_assembler;
+use crate::packet_assembly;
 
-use super::packet_assembler::PacketAssembly;
+use super::packet_assembly::PacketAssembly;
 
 #[derive(Debug, Display, Error)]
 pub enum Error {
     /// IO error: {0}
     IOError(#[from] std::io::Error),
     /// Failed to assemble packet: {0}
-    PacketAssembly(#[from] packet_assembler::Error),
+    PacketAssembly(#[from] packet_assembly::Error),
 }
 
 pub struct PacketConnection {
