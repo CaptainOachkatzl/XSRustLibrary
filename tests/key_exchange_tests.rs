@@ -3,10 +3,7 @@ use std::{
     thread,
 };
 
-use xs_rust_library::cryptography::key_exchange_algos::{
-    curve25519::Curve25519,
-    key_exchange::{self, KeyExchange},
-};
+use xs_rust_library::cryptography::key_exchange::{self, curve25519::Curve25519, KeyExchange};
 
 #[test]
 fn successful_key_exchange() {

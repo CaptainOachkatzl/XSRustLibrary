@@ -1,3 +1,5 @@
+pub mod curve25519;
+
 use displaydoc::Display;
 use thiserror::Error;
 
