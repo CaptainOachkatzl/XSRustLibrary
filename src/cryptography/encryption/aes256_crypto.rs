@@ -24,23 +24,25 @@ impl Encryption for Aes256Crypto {
     fn encrypt(&mut self, data: &[u8]) -> Result<Vec<u8>, super::Error> {
         let rng = OsRng;
         let nonce = Aes256Gcm::generate_nonce(rng);
-        let encrypted = match self.crypto.encrypt(&nonce, data) {
+        let mut encrypted = match self.crypto.encrypt(&nonce, data) {
             Ok(v) => v,
             Err(e) => return Err(super::Error::Encryption(e.to_string())),
         };
 
-        let mut encrypted_with_nonce = vec![0; NONCE_SIZE + encrypted.len()];
-        encrypted_with_nonce[..NONCE_SIZE].copy_from_slice(&nonce);
-        encrypted_with_nonce[NONCE_SIZE..].copy_from_slice(&encrypted);
-        Ok(encrypted_with_nonce)
+        // append nonce on the back to avoid moving/copying a lot of memory
+        encrypted.extend_from_slice(&nonce);
+
+        Ok(encrypted)
     }
 
     fn decrypt(&mut self, data: &[u8]) -> Result<Vec<u8>, super::Error> {
         if data.len() < NONCE_SIZE {
             return Err(super::Error::Encryption("Encrypted message does not contain nonce.".to_string()));
         }
-        let nonce = Nonce::from_slice(&data[..NONCE_SIZE]);
-        let decrypted = match self.crypto.decrypt(nonce, &data[NONCE_SIZE..]) {
+
+        let nonce_start = data.len() - NONCE_SIZE;
+        let nonce = Nonce::from_slice(&data[nonce_start..]);
+        let decrypted = match self.crypto.decrypt(nonce, &data[..nonce_start]) {
             Ok(v) => v,
             Err(e) => return Err(super::Error::Encryption(e.to_string())),
         };
