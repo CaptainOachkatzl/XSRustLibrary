@@ -9,7 +9,7 @@ use thiserror::Error;
 
 use crate::packet_assembler;
 
-use super::packet_assembler::PacketAssembler;
+use super::packet_assembler::PacketAssembly;
 
 #[derive(Debug, Display, Error)]
 pub enum Error {
@@ -22,7 +22,7 @@ pub enum Error {
 pub struct PacketConnection {
     tcp_stream: TcpStream,
     shutdown_ref_stream: TcpStream,
-    packet_assembler: PacketAssembler,
+    packet_assembler: PacketAssembly,
 }
 
 impl PacketConnection {
@@ -32,7 +32,7 @@ impl PacketConnection {
             // underlying socket guarantees threadsafety
             shutdown_ref_stream: tcp_stream.try_clone().unwrap(),
             tcp_stream,
-            packet_assembler: PacketAssembler::new(receive_buffer_size),
+            packet_assembler: PacketAssembly::new(receive_buffer_size),
         }
     }
 
@@ -44,7 +44,7 @@ impl PacketConnection {
     }
 
     pub fn receive(&mut self) -> Result<Vec<u8>, Error> {
-        match self.packet_assembler.assemble(&mut self.tcp_stream) {
+        match self.packet_assembler.receive_packet(&mut self.tcp_stream) {
             Ok(v) => Ok(v),
             Err(e) => {
                 self.tcp_stream.shutdown(Shutdown::Both)?;

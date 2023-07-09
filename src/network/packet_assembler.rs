@@ -18,20 +18,20 @@ pub enum Error {
 }
 
 #[derive(Clone)]
-pub struct PacketAssembler {
+pub struct PacketAssembly {
     buffer: DataBuffer,
 }
 
-impl PacketAssembler {
-    pub fn new(buffer_size: usize) -> PacketAssembler {
-        PacketAssembler {
+impl PacketAssembly {
+    pub fn new(buffer_size: usize) -> PacketAssembly {
+        PacketAssembly {
             buffer: DataBuffer::new(buffer_size),
         }
     }
 
-    pub fn assemble(&mut self, tcp_stream: &mut TcpStream) -> Result<Vec<u8>, Error> {
+    pub fn receive_packet(&mut self, tcp_stream: &mut TcpStream) -> Result<Vec<u8>, Error> {
         if self.buffer.is_empty() {
-            self.receive(tcp_stream)?;
+            self.receive_next_packet_chunk(tcp_stream)?;
         }
 
         // create a new packet
@@ -41,12 +41,12 @@ impl PacketAssembler {
         loop {
             match packet.fill(&mut self.buffer) {
                 PacketState::Finished => return Ok(packet.into_vec()),
-                PacketState::RequiresData => self.receive(tcp_stream)?,
+                PacketState::RequiresData => self.receive_next_packet_chunk(tcp_stream)?,
             }
         }
     }
 
-    fn receive(&mut self, tcp_stream: &mut TcpStream) -> Result<(), Error> {
+    fn receive_next_packet_chunk(&mut self, tcp_stream: &mut TcpStream) -> Result<(), Error> {
         let size = tcp_stream.read(&mut self.buffer.get_mut_buffer())?;
         self.buffer.set_positions(0, size);
         if size == 0 {
