@@ -2,7 +2,10 @@
 mod network_tests {
     use std::{net::*, sync::*, thread};
 
-    use xs_rust_library::{packet_connection::PacketConnection, packet_receive_event::PacketReceiveEvent};
+    use xs_rust_library::{
+        packet_connection::{Crypto, PacketConnection, KEX},
+        packet_receive_event::PacketReceiveEvent,
+    };
 
     #[test]
     fn connect_test() {
@@ -73,9 +76,7 @@ mod network_tests {
         let counter = Arc::new(Mutex::new(0));
         let counter2 = counter.clone();
 
-        let connection = PacketConnection::new(stream, 1024);
-        let mut event = PacketReceiveEvent::new(connection);
-        let event2 = event.try_clone().unwrap();
+        let shutdown_stream = stream.try_clone().unwrap();
 
         let receive_thread = thread::spawn(move || {
             let receive_callback = Box::new(move |_data: &Vec<u8>| {
@@ -83,6 +84,9 @@ mod network_tests {
                 *guard += 1;
                 listening_barrier.wait();
             });
+
+            let connection = PacketConnection::new(stream, 1024);
+            let mut event = PacketReceiveEvent::new(connection);
 
             let _sub = event.subscribe(receive_callback);
             event.start();
@@ -93,7 +97,7 @@ mod network_tests {
 
         listening_barrier2.wait();
 
-        event2.stop().unwrap();
+        shutdown_stream.shutdown(Shutdown::Both).unwrap();
 
         // wait for shutdown and acknowledge it -> prevents timeout of receive thread
         assert!(accept_stream.receive().is_err());
@@ -106,15 +110,33 @@ mod network_tests {
     fn shutdown_test() {
         let _listener = TcpListener::bind("0.0.0.0:4567").unwrap();
         let stream = TcpStream::connect("127.0.0.1:4567").unwrap();
+        let stream2 = stream.try_clone().unwrap();
 
         let connection = PacketConnection::new(stream, 1024);
-        let mut connection2 = connection.try_clone().unwrap();
 
         let receive_thread = thread::spawn(move || {
-            assert!(connection2.receive().is_err());
+            let mut connection = PacketConnection::new(stream2, 1024);
+            assert!(connection.receive().is_err());
         });
 
         connection.shutdown(Shutdown::Both).unwrap();
         receive_thread.join().unwrap();
+    }
+
+    #[test]
+    fn encrypted_connection() {
+        let listener = TcpListener::bind("127.0.0.1:5678").unwrap();
+
+        let join_handle = thread::spawn(move || {
+            let remote_stream = TcpStream::connect("127.0.0.1:5678").unwrap();
+            let mut remote_con = PacketConnection::with_encryption(remote_stream, 1024, KEX::Curve25519, Crypto::Aes256, false).unwrap();
+            remote_con.send(b"top secret").unwrap();
+        });
+
+        let (local_stream, _) = listener.accept().unwrap();
+        let mut local_con = PacketConnection::with_encryption(local_stream, 1024, KEX::Curve25519, Crypto::Aes256, true).unwrap();
+        assert_eq!(b"top secret".as_slice(), &local_con.receive().unwrap());
+
+        join_handle.join().unwrap();
     }
 }

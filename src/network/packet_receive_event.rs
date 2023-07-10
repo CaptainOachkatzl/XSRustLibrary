@@ -79,13 +79,4 @@ impl PacketReceiveEvent {
     pub fn subscribe(&mut self, subscriber: Box<EventHandler>) -> Subscription<Vec<u8>> {
         self.receive_event.borrow_mut().subscribe(subscriber)
     }
-
-    pub fn try_clone(&self) -> Result<PacketReceiveEvent, Error> {
-        Ok(PacketReceiveEvent {
-            packet_connection: RefCell::new(self.packet_connection.borrow().try_clone()?),
-            receive_event: RefCell::new(Event::new()),
-            started: AtomicBool::new(self.started.load(Ordering::SeqCst)),
-            stop: AtomicBool::new(self.stop.load(Ordering::SeqCst)),
-        })
-    }
 }
