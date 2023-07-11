@@ -19,28 +19,27 @@ pub enum Error {
     PacketAssembly(#[from] packet_assembly::Error),
 }
 
+/// TCP connection that sends and receives sized packages instead of streaming data.
 pub struct PacketConnection {
     tcp_stream: TcpStream,
-    shutdown_ref_stream: TcpStream,
     packet_assembler: PacketAssembly,
 }
 
 impl PacketConnection {
     pub fn new(tcp_stream: TcpStream, receive_buffer_size: usize) -> PacketConnection {
         PacketConnection {
-            // copy stream to have an independently accessible object to shutdown
-            // underlying socket guarantees threadsafety
-            shutdown_ref_stream: tcp_stream.try_clone().unwrap(),
             tcp_stream,
             packet_assembler: PacketAssembly::new(receive_buffer_size),
         }
     }
 
+    /// shuts the connection down.
     pub fn shutdown(&self, how: Shutdown) -> Result<(), Error> {
-        self.shutdown_ref_stream.shutdown(how)?;
+        self.tcp_stream.shutdown(how)?;
         Ok(())
     }
 
+    /// get the underlying tcp stream.
     pub fn tcp_stream(&self) -> &TcpStream {
         &self.tcp_stream
     }
