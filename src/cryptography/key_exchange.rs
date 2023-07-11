@@ -3,6 +3,13 @@ pub mod curve25519;
 use displaydoc::Display;
 use thiserror::Error;
 
+use crate::connection::Connection;
+
+pub enum HandshakeMode {
+    Client,
+    Server,
+}
+
 #[derive(Debug, Display, Error)]
 pub enum Error {
     /// Communication error: {0}
@@ -12,12 +19,7 @@ pub enum Error {
 }
 
 pub trait KeyExchange {
-    fn handshake_active(
-        send: impl FnMut(&[u8]) -> Result<(), Error>,
-        receive: impl FnMut() -> Result<Box<[u8]>, Error>,
-    ) -> Result<Box<[u8]>, Error>;
-    fn handshake_passive(
-        send: impl FnMut(&[u8]) -> Result<(), Error>,
-        receive: impl FnMut() -> Result<Box<[u8]>, Error>,
-    ) -> Result<Box<[u8]>, Error>;
+    fn handshake<E>(connection: &mut impl Connection<E>, mode: HandshakeMode) -> Result<Box<[u8]>, Error>
+    where
+        E: std::fmt::Display;
 }

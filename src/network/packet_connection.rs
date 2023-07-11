@@ -8,9 +8,10 @@ use displaydoc::Display;
 use thiserror::Error;
 
 use crate::{
+    connection::Connection,
     cryptography::{
         encryption::{self, aes256_crypto::Aes256Crypto, Encryption},
-        key_exchange::{self, curve25519::Curve25519, KeyExchange},
+        key_exchange::{curve25519::Curve25519, HandshakeMode, KeyExchange},
     },
     packet_assembly,
 };
@@ -61,9 +62,9 @@ impl PacketConnection {
         receive_buffer_size: usize,
         key_exchange: KEX,
         encryption: Crypto,
-        active: bool,
+        mode: HandshakeMode,
     ) -> Result<Self, Error> {
-        let secret = handshake(&tcp_stream, key_exchange, active)?;
+        let secret = handshake(&tcp_stream, key_exchange, mode)?;
 
         let crypto = Box::from(match encryption {
             Crypto::Aes256 => Aes256Crypto::new(&secret),
@@ -75,7 +76,38 @@ impl PacketConnection {
         Ok(connection)
     }
 
-    pub fn send(&mut self, packet: &[u8]) -> Result<(), Error> {
+    pub fn shutdown(&self, how: Shutdown) -> Result<(), Error> {
+        self.shutdown_ref_stream.shutdown(how)?;
+        Ok(())
+    }
+
+    pub fn tcp_stream(&self) -> &TcpStream {
+        &self.tcp_stream
+    }
+}
+
+fn handshake(tcp_stream: &TcpStream, kex: KEX, mode: HandshakeMode) -> Result<[u8; 32], Error> {
+    let mut handshake_connection = PacketConnection::new(tcp_stream.try_clone()?, 64);
+
+    let secret_result = match kex {
+        KEX::Curve25519 => Curve25519::handshake(&mut handshake_connection, mode),
+    };
+
+    let secret_data = match secret_result {
+        Ok(v) => v,
+        Err(e) => return Err(Error::CryptoInitialization(e.to_string())),
+    };
+
+    let secret: [u8; 32] = secret_data
+        .as_ref()
+        .try_into()
+        .map_err(|_| Error::CryptoInitialization("Key exchange secret has invalid size.".to_string()))?;
+
+    Ok(secret)
+}
+
+impl Connection<Error> for PacketConnection {
+    fn send(&mut self, packet: &[u8]) -> Result<(), Error> {
         let encrypted = if let Some(ref mut crypto) = self.crypto {
             Some(crypto.encrypt(packet).map_err(Error::EncryptMessage)?)
         } else {
@@ -93,7 +125,7 @@ impl PacketConnection {
         Ok(())
     }
 
-    pub fn receive(&mut self) -> Result<Vec<u8>, Error> {
+    fn receive(&mut self) -> Result<Vec<u8>, Error> {
         let packet = match self.packet_assembler.receive_packet(&mut self.tcp_stream) {
             Ok(v) => Ok(v),
             Err(e) => {
@@ -109,48 +141,4 @@ impl PacketConnection {
 
         Ok(packet)
     }
-
-    pub fn shutdown(&self, how: Shutdown) -> Result<(), Error> {
-        self.shutdown_ref_stream.shutdown(how)?;
-        Ok(())
-    }
-
-    pub fn tcp_stream(&self) -> &TcpStream {
-        &self.tcp_stream
-    }
-}
-
-fn handshake(tcp_stream: &TcpStream, kex: KEX, active: bool) -> Result<[u8; 32], Error> {
-    let mut send_con = PacketConnection::new(tcp_stream.try_clone()?, 64);
-    let send_kex = move |packet: &[u8]| send_con.send(packet).map_err(|e| key_exchange::Error::Communication(e.to_string()));
-
-    let mut receive_con = PacketConnection::new(tcp_stream.try_clone()?, 64);
-    let receive_kex = move || {
-        receive_con
-            .receive()
-            .map(|v| v.into_boxed_slice())
-            .map_err(|e| key_exchange::Error::Communication(e.to_string()))
-    };
-
-    let secret_result = match kex {
-        KEX::Curve25519 => {
-            if active {
-                Curve25519::handshake_active(send_kex, receive_kex)
-            } else {
-                Curve25519::handshake_passive(send_kex, receive_kex)
-            }
-        }
-    };
-
-    let secret_data = match secret_result {
-        Ok(v) => v,
-        Err(e) => return Err(Error::CryptoInitialization(e.to_string())),
-    };
-
-    let secret: [u8; 32] = secret_data
-        .as_ref()
-        .try_into()
-        .map_err(|_| Error::CryptoInitialization("Key exchange secret has invalid size.".to_string()))?;
-
-    Ok(secret)
 }

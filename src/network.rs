@@ -1,3 +1,4 @@
+pub mod connection;
 pub mod constants;
 mod data_buffer;
 pub mod packet_assembly;

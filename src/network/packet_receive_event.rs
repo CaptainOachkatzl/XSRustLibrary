@@ -8,6 +8,7 @@ use displaydoc::Display;
 use thiserror::Error;
 
 use crate::{
+    connection::Connection,
     events::{event::Event, subscription::Subscription, Invokable, Subscribable},
     packet_connection,
 };

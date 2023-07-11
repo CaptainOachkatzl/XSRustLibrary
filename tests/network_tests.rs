@@ -3,8 +3,9 @@ mod network_tests {
     use std::{net::*, sync::*, thread};
 
     use xs_rust_library::{
+        connection::Connection,
         packet_connection::{Crypto, PacketConnection, KEX},
-        packet_receive_event::PacketReceiveEvent,
+        packet_receive_event::PacketReceiveEvent, cryptography::key_exchange::HandshakeMode,
     };
 
     #[test]
@@ -129,12 +130,12 @@ mod network_tests {
 
         let join_handle = thread::spawn(move || {
             let remote_stream = TcpStream::connect("127.0.0.1:5678").unwrap();
-            let mut remote_con = PacketConnection::with_encryption(remote_stream, 1024, KEX::Curve25519, Crypto::Aes256, false).unwrap();
+            let mut remote_con = PacketConnection::with_encryption(remote_stream, 1024, KEX::Curve25519, Crypto::Aes256, HandshakeMode::Client).unwrap();
             remote_con.send(b"top secret").unwrap();
         });
 
         let (local_stream, _) = listener.accept().unwrap();
-        let mut local_con = PacketConnection::with_encryption(local_stream, 1024, KEX::Curve25519, Crypto::Aes256, true).unwrap();
+        let mut local_con = PacketConnection::with_encryption(local_stream, 1024, KEX::Curve25519, Crypto::Aes256, HandshakeMode::Server).unwrap();
         assert_eq!(b"top secret".as_slice(), &local_con.receive().unwrap());
 
         join_handle.join().unwrap();
