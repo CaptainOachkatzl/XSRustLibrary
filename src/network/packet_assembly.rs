@@ -47,7 +47,7 @@ impl PacketAssembly {
     }
 
     fn receive_next_packet_chunk(&mut self, tcp_stream: &mut TcpStream) -> Result<(), Error> {
-        let size = tcp_stream.read(&mut self.buffer.get_mut_buffer())?;
+        let size = tcp_stream.read(self.buffer.get_mut_buffer())?;
         self.buffer.set_positions(0, size);
         if size == 0 {
             return Err(Error::ReceivedFin);
