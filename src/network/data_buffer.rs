@@ -9,6 +9,8 @@ pub struct DataBuffer {
 }
 
 impl DataBuffer {
+    /// creates a new data buffer with the passed capacity.
+    /// the buffer is EMPTY and needs to be filled via the `get_mut_buffer` call.
     pub fn new(buffer_size: usize) -> Self {
         Self {
             buffer: vec![0_u8; buffer_size],
@@ -17,16 +19,18 @@ impl DataBuffer {
         }
     }
 
-    pub fn set_positions(&mut self, start: usize, end: usize) {
-        self.current_pos = start;
+    /// reset the reading window to the start of the buffer.
+    pub fn reset_read_window(&mut self, end: usize) {
+        self.current_pos = 0;
         self.end_pos = end;
     }
 
+    /// get the internal buffer to refill it with data. call `reset_window` after buffer is filled.
     pub fn get_mut_buffer(&mut self) -> &mut Vec<u8> {
         &mut self.buffer
     }
 
-    // read the next <count> bytes. future reads/takes will be able to read the data again.
+    /// read the next <count> bytes. future reads/takes will be able to read the data again.
     pub fn read(&self, count: usize) -> &[u8] {
         let start = self.current_pos;
         let end = std::cmp::min(self.current_pos + count, self.end_pos);
@@ -57,15 +61,16 @@ impl DataBuffer {
         self.remaining() == 0
     }
 
+    /// get the remaining data that is left in the buffer.
     pub fn remaining(&self) -> usize {
         self.end_pos - self.current_pos
     }
 
-    pub fn get_current_position(&self) -> usize {
+    fn get_current_position(&self) -> usize {
         self.current_pos
     }
 
-    pub fn get_end_position(&self) -> usize {
+    fn get_end_position(&self) -> usize {
         self.end_pos
     }
 }
