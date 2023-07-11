@@ -33,19 +33,16 @@ fn successful_key_exchange() {
         receiver: receiver_local,
     };
 
-    let con_remote = ChannelConnection {
-        sender: sender_remote,
-        receiver: receiver_remote,
-    };
-
-    let join_handle = thread::spawn(move || remote_thread(con_remote));
+    let join_handle = thread::spawn(move || {
+        let mut con_remote = ChannelConnection {
+            sender: sender_remote,
+            receiver: receiver_remote,
+        };
+        Curve25519.handshake(&mut con_remote, HandshakeMode::Client).unwrap();
+    });
 
     Curve25519.handshake(&mut con_local, HandshakeMode::Server).unwrap();
     join_handle.join().unwrap();
-}
-
-fn remote_thread(mut connection: ChannelConnection) {
-    Curve25519.handshake(&mut connection, HandshakeMode::Client).unwrap();
 }
 
 struct FaultyConnection;

@@ -35,8 +35,8 @@ where
 {
     pub fn with_handshake(mut connection: Con, kex: impl KeyExchange, mode: HandshakeMode) -> Result<Self, Error> {
         let secret = Self::handshake(&mut connection, kex, mode)?;
-
         let crypto = Enc::initialize(&secret).map_err(|e| Error::CryptoInitialization(e.to_string()))?;
+
         Ok(Self {
             connection,
             crypto: *crypto,
@@ -44,20 +44,9 @@ where
         })
     }
 
-    fn handshake(connection: &mut Con, mut kex: impl KeyExchange, mode: HandshakeMode) -> Result<[u8; 32], Error> {
-        let secret_result = kex.handshake(connection, mode);
-
-        let secret_data = match secret_result {
-            Ok(v) => Ok(v),
-            Err(e) => Err(Error::CryptoInitialization(e.to_string())),
-        }?;
-
-        let secret: [u8; 32] = secret_data
-            .as_ref()
-            .try_into()
-            .map_err(|_| Error::CryptoInitialization("Invalid secret size".to_string()))?;
-
-        Ok(secret)
+    fn handshake(connection: &mut Con, mut kex: impl KeyExchange, mode: HandshakeMode) -> Result<Box<[u8]>, Error> {
+        kex.handshake(connection, mode)
+            .map_err(|e| Error::CryptoInitialization(e.to_string()))
     }
 }
 
