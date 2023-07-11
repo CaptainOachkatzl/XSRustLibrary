@@ -19,7 +19,7 @@ pub enum Error {
 }
 
 pub trait KeyExchange {
-    fn handshake<E>(connection: &mut impl Connection<E>, mode: HandshakeMode) -> Result<Box<[u8]>, Error>
+    fn handshake<E>(&mut self, connection: &mut impl Connection<E>, mode: HandshakeMode) -> Result<Box<[u8]>, Error>
     where
         E: std::fmt::Display;
 }

@@ -40,12 +40,12 @@ fn successful_key_exchange() {
 
     let join_handle = thread::spawn(move || remote_thread(con_remote));
 
-    Curve25519::handshake(&mut con_local, HandshakeMode::Server).unwrap();
+    Curve25519.handshake(&mut con_local, HandshakeMode::Server).unwrap();
     join_handle.join().unwrap();
 }
 
 fn remote_thread(mut connection: ChannelConnection) {
-    Curve25519::handshake(&mut connection, HandshakeMode::Client).unwrap();
+    Curve25519.handshake(&mut connection, HandshakeMode::Client).unwrap();
 }
 
 struct FaultyConnection;
@@ -62,5 +62,5 @@ impl Connection<String> for FaultyConnection {
 
 #[test]
 fn bad_handshake() {
-    Curve25519::handshake(&mut FaultyConnection, HandshakeMode::Client).unwrap_err();
+    Curve25519.handshake(&mut FaultyConnection, HandshakeMode::Client).unwrap_err();
 }

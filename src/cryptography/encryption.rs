@@ -9,9 +9,12 @@ pub enum Error {
     Communication(String),
     /// Encryption error: {0}
     Encryption(String),
+    /// Initialization error: {0}
+    Initialization(String),
 }
 
 pub trait Encryption {
+    fn initialize(shared_secret: &[u8]) -> Result<Box<Self>, Error>;
     fn encrypt(&mut self, data: &[u8]) -> Result<Vec<u8>, Error>;
     fn decrypt(&mut self, data: &[u8]) -> Result<Vec<u8>, Error>;
 }

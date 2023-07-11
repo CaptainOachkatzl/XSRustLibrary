@@ -12,7 +12,7 @@ pub struct Curve25519;
 const PUB_KEY_BYTE_SIZE: usize = 32;
 
 impl KeyExchange for Curve25519 {
-    fn handshake<E>(connection: &mut impl Connection<E>, _mode: super::HandshakeMode) -> Result<Box<[u8]>, Error>
+    fn handshake<E>(&mut self, connection: &mut impl Connection<E>, _mode: super::HandshakeMode) -> Result<Box<[u8]>, Error>
     where
         E: Display,
     {

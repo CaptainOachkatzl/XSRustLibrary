@@ -49,4 +49,11 @@ impl Encryption for Aes256Crypto {
 
         Ok(decrypted)
     }
+
+    fn initialize(shared_secret: &[u8]) -> Result<Box<Self>, super::Error> {
+        let sized_secret: [u8; SHARED_SECRET_SIZE] = shared_secret
+            .try_into()
+            .map_err(|_| super::Error::Initialization("Invalid secret size".to_string()))?;
+        Ok(Box::new(Self::new(&sized_secret)))
+    }
 }
