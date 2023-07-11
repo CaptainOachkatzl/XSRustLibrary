@@ -22,8 +22,7 @@ impl Aes256Crypto {
 
 impl Encryption for Aes256Crypto {
     fn encrypt(&mut self, data: &[u8]) -> Result<Vec<u8>, super::Error> {
-        let rng = OsRng;
-        let nonce = Aes256Gcm::generate_nonce(rng);
+        let nonce = Aes256Gcm::generate_nonce(OsRng);
         let mut encrypted = match self.crypto.encrypt(&nonce, data) {
             Ok(v) => v,
             Err(e) => return Err(super::Error::Encryption(e.to_string())),

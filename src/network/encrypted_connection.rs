@@ -24,7 +24,7 @@ pub enum Error {
 pub struct EncryptedConnection<Enc, Con, E> {
     crypto: Enc,
     connection: Con,
-    _e: PhantomData<E>,
+    _marker: PhantomData<E>,
 }
 
 impl<Enc, Con, E> EncryptedConnection<Enc, Con, E>
@@ -40,7 +40,7 @@ where
         Ok(Self {
             connection,
             crypto: *crypto,
-            _e: PhantomData,
+            _marker: PhantomData,
         })
     }
 
