@@ -1,4 +1,4 @@
-use super::data_buffer::DataBuffer;
+use crate::data_buffer::DataBuffer;
 
 pub enum PacketState {
     Finished,

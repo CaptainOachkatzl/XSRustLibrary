@@ -1,6 +1,7 @@
+use crate::data_buffer::DataBuffer;
+
 use super::{
     constants::HEADER_SIZE,
-    data_buffer::DataBuffer,
     packet_buffer::{PacketBuffer, PacketState},
 };
 use displaydoc::Display;
