@@ -30,6 +30,8 @@ pub enum TransmissionError {
     DecryptMessage(encryption::Error),
 }
 
+/// an encrypted connection that has full modularity regarding its key exchange, 
+/// the encryption that is used and the underlying connection.
 pub struct EncryptedConnection<Enc, Con> {
     crypto: Enc,
     connection: Con,
@@ -41,6 +43,8 @@ where
     Con: Connection,
     <Con as Connection>::ErrorType: std::fmt::Display,
 {
+    /// exchange keys and set up encryption module over the passed in connection.
+    /// returns a fully encrypted and immediately usable connection.
     pub fn with_handshake(
         mut connection: Con,
         mut kex: impl KeyExchange<SecretLength = N>,
@@ -57,6 +61,12 @@ where
             crypto: *crypto,
         })
     }
+
+    /// get the underlying connection to e.g. shut it down.
+    /// all traffic that is sent via the connection is NOT ENCRYPTED and readable by attackers.
+    pub fn get_underlying_connection(&mut self) -> &mut Con {
+        &mut self.connection
+    }
 }
 
 impl<Enc, Con, E> Connection for EncryptedConnection<Enc, Con>
@@ -67,6 +77,7 @@ where
 {
     type ErrorType = TransmissionError;
 
+    /// send data that will be encrypted with the crypto module.
     fn send(&mut self, data: &[u8]) -> Result<(), TransmissionError> {
         let encrypted = self.crypto.encrypt(data).map_err(TransmissionError::DecryptMessage)?;
         self.connection
@@ -74,6 +85,7 @@ where
             .map_err(|e| TransmissionError::Connection(e.to_string()))
     }
 
+    /// receive data and decrypt it with the crypto module.
     fn receive(&mut self) -> Result<Vec<u8>, TransmissionError> {
         let packet = self
             .connection
