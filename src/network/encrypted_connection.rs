@@ -1,3 +1,5 @@
+use std::{fmt::Display, marker::PhantomData};
+
 use displaydoc::Display;
 use thiserror::Error;
 
@@ -7,7 +9,6 @@ use crate::{
         encryption::{self, Encryption},
         key_exchange::{HandshakeMode, KeyExchange},
     },
-    packet_connection::PacketConnection,
 };
 
 #[derive(Debug, Display, Error)]
@@ -20,29 +21,30 @@ pub enum Error {
     EncryptMessage(encryption::Error),
 }
 
-pub struct EncryptedConnection<Enc>
-where
-    Enc: Encryption,
-{
+pub struct EncryptedConnection<Enc, Con, E> {
     crypto: Enc,
-    connection: PacketConnection,
+    connection: Con,
+    _e: PhantomData<E>,
 }
 
-impl<Enc> EncryptedConnection<Enc>
+impl<Enc, Con, E> EncryptedConnection<Enc, Con, E>
 where
     Enc: Encryption,
+    Con: Connection<E>,
+    E: Display,
 {
-    pub fn with_handshake(mut connection: PacketConnection, kex: impl KeyExchange, mode: HandshakeMode) -> Result<Self, Error> {
+    pub fn with_handshake(mut connection: Con, kex: impl KeyExchange, mode: HandshakeMode) -> Result<Self, Error> {
         let secret = Self::handshake(&mut connection, kex, mode)?;
 
         let crypto = Enc::initialize(&secret).map_err(|e| Error::CryptoInitialization(e.to_string()))?;
         Ok(Self {
             connection,
             crypto: *crypto,
+            _e: PhantomData,
         })
     }
 
-    fn handshake(connection: &mut PacketConnection, mut kex: impl KeyExchange, mode: HandshakeMode) -> Result<[u8; 32], Error> {
+    fn handshake(connection: &mut Con, mut kex: impl KeyExchange, mode: HandshakeMode) -> Result<[u8; 32], Error> {
         let secret_result = kex.handshake(connection, mode);
 
         let secret_data = match secret_result {
@@ -59,9 +61,11 @@ where
     }
 }
 
-impl<Enc> Connection<Error> for EncryptedConnection<Enc>
+impl<Enc, Con, E> Connection<Error> for EncryptedConnection<Enc, Con, E>
 where
     Enc: Encryption,
+    Con: Connection<E>,
+    E: Display,
 {
     fn send(&mut self, data: &[u8]) -> Result<(), Error> {
         let encrypted = self.crypto.encrypt(data).map_err(Error::EncryptMessage)?;
