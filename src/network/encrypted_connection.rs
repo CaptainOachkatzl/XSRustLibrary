@@ -7,18 +7,26 @@ use crate::{
     connection::Connection,
     cryptography::{
         encryption::{self, Encryption},
-        key_exchange::{HandshakeMode, KeyExchange},
+        key_exchange::{self, HandshakeMode, KeyExchange},
     },
 };
 
 #[derive(Debug, Display, Error)]
-pub enum Error {
+pub enum HandshakeError {
+    /// Error during key exchange: {0}
+    KeyExchange(#[from] key_exchange::Error),
+    /// Unable to initialize crypto: {0}
+    Crypto(#[from] encryption::Error),
+}
+
+#[derive(Debug, Display, Error)]
+pub enum TransmissionError {
     /// Underlying connection error: {0}
-    Transmission(String),
-    /// Crypto initialization error: {0}
-    CryptoInitialization(String),
+    Connection(String),
     /// Failed to encrypt message: {0}
     EncryptMessage(encryption::Error),
+    /// Failed to decrypt message: {0}
+    DecryptMessage(encryption::Error),
 }
 
 pub struct EncryptedConnection<Enc, Con> {
@@ -32,19 +40,14 @@ where
     Con: Connection,
     <Con as Connection>::ErrorType: std::fmt::Display,
 {
-    pub fn with_handshake(mut connection: Con, kex: impl KeyExchange, mode: HandshakeMode) -> Result<Self, Error> {
-        let secret = Self::handshake(&mut connection, kex, mode)?;
-        let crypto = Enc::initialize(&secret).map_err(|e| Error::CryptoInitialization(e.to_string()))?;
+    pub fn with_handshake(mut connection: Con, mut kex: impl KeyExchange, mode: HandshakeMode) -> Result<Self, HandshakeError> {
+        let secret = kex.handshake(&mut connection, mode)?;
+        let crypto = Enc::initialize(&secret)?;
 
         Ok(Self {
             connection,
             crypto: *crypto,
         })
-    }
-
-    fn handshake(connection: &mut Con, mut kex: impl KeyExchange, mode: HandshakeMode) -> Result<Box<[u8]>, Error> {
-        kex.handshake(connection, mode)
-            .map_err(|e| Error::CryptoInitialization(e.to_string()))
     }
 }
 
@@ -54,15 +57,20 @@ where
     Con: Connection<ErrorType = E>,
     E: Display,
 {
-    type ErrorType = Error;
+    type ErrorType = TransmissionError;
 
-    fn send(&mut self, data: &[u8]) -> Result<(), Error> {
-        let encrypted = self.crypto.encrypt(data).map_err(Error::EncryptMessage)?;
-        self.connection.send(&encrypted).map_err(|e| Error::Transmission(e.to_string()))
+    fn send(&mut self, data: &[u8]) -> Result<(), TransmissionError> {
+        let encrypted = self.crypto.encrypt(data).map_err(TransmissionError::DecryptMessage)?;
+        self.connection
+            .send(&encrypted)
+            .map_err(|e| TransmissionError::Connection(e.to_string()))
     }
 
-    fn receive(&mut self) -> Result<Vec<u8>, Error> {
-        let packet = self.connection.receive().map_err(|e| Error::Transmission(e.to_string()))?;
-        self.crypto.decrypt(&packet).map_err(Error::EncryptMessage)
+    fn receive(&mut self) -> Result<Vec<u8>, TransmissionError> {
+        let packet = self
+            .connection
+            .receive()
+            .map_err(|e| TransmissionError::Connection(e.to_string()))?;
+        self.crypto.decrypt(&packet).map_err(TransmissionError::EncryptMessage)
     }
 }
