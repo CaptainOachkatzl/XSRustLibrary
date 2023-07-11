@@ -15,7 +15,7 @@ pub enum Error {
     /// Invalid packet data
     InvalidData,
     /// Socket error while trying to receive data
-    ReceiveError(#[from] std::io::Error),
+    Receive(#[from] std::io::Error),
 }
 
 #[derive(Clone)]

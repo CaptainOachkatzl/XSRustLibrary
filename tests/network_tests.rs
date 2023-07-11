@@ -9,8 +9,7 @@ mod network_tests {
             key_exchange::{curve25519::Curve25519, HandshakeMode},
         },
         encrypted_connection::EncryptedConnection,
-        packet_connection::PacketConnection,
-        packet_receive_event::PacketReceiveEvent,
+        packet_connection::{PacketConnection, packet_receive_event::PacketReceiveEvent},
     };
 
     #[test]

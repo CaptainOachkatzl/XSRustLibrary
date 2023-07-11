@@ -1,3 +1,8 @@
+mod constants;
+mod packet_assembly;
+mod packet_buffer;
+pub mod packet_receive_event;
+
 use std::{
     io::Write,
     net::{Shutdown, TcpStream},
@@ -7,9 +12,9 @@ use std::{
 use displaydoc::Display;
 use thiserror::Error;
 
-use crate::{connection::Connection, packet_assembly};
+use crate::connection::Connection;
 
-use super::packet_assembly::PacketAssembly;
+use packet_assembly::PacketAssembly;
 
 #[derive(Debug, Display, Error)]
 pub enum Error {

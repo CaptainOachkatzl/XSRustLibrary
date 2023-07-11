@@ -13,7 +13,7 @@ use crate::{
     packet_connection,
 };
 
-use super::packet_connection::PacketConnection;
+use super::PacketConnection;
 
 type EventHandler = dyn Fn(&Vec<u8>) + Send + Sync;
 
