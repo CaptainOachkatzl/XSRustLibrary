@@ -1,4 +1,4 @@
-use std::{fmt::Display, marker::PhantomData};
+use std::fmt::Display;
 
 use displaydoc::Display;
 use thiserror::Error;
@@ -13,7 +13,7 @@ use crate::{
 
 #[derive(Debug, Display, Error)]
 pub enum Error {
-    /// Transmission error: {0}
+    /// Underlying connection error: {0}
     Transmission(String),
     /// Crypto initialization error: {0}
     CryptoInitialization(String),
@@ -21,17 +21,16 @@ pub enum Error {
     EncryptMessage(encryption::Error),
 }
 
-pub struct EncryptedConnection<Enc, Con, E> {
+pub struct EncryptedConnection<Enc, Con> {
     crypto: Enc,
     connection: Con,
-    _marker: PhantomData<E>,
 }
 
-impl<Enc, Con, E> EncryptedConnection<Enc, Con, E>
+impl<Enc, Con> EncryptedConnection<Enc, Con>
 where
     Enc: Encryption,
-    Con: Connection<E>,
-    E: Display,
+    Con: Connection,
+    <Con as Connection>::ErrorType: std::fmt::Display,
 {
     pub fn with_handshake(mut connection: Con, kex: impl KeyExchange, mode: HandshakeMode) -> Result<Self, Error> {
         let secret = Self::handshake(&mut connection, kex, mode)?;
@@ -40,7 +39,6 @@ where
         Ok(Self {
             connection,
             crypto: *crypto,
-            _marker: PhantomData,
         })
     }
 
@@ -50,12 +48,14 @@ where
     }
 }
 
-impl<Enc, Con, E> Connection<Error> for EncryptedConnection<Enc, Con, E>
+impl<Enc, Con, E> Connection for EncryptedConnection<Enc, Con>
 where
     Enc: Encryption,
-    Con: Connection<E>,
+    Con: Connection<ErrorType = E>,
     E: Display,
 {
+    type ErrorType = Error;
+
     fn send(&mut self, data: &[u8]) -> Result<(), Error> {
         let encrypted = self.crypto.encrypt(data).map_err(Error::EncryptMessage)?;
         self.connection.send(&encrypted).map_err(|e| Error::Transmission(e.to_string()))

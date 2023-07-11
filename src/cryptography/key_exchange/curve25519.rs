@@ -12,10 +12,11 @@ pub struct Curve25519;
 const PUB_KEY_BYTE_SIZE: usize = 32;
 
 impl KeyExchange for Curve25519 {
-    fn handshake<E>(&mut self, connection: &mut impl Connection<E>, _mode: super::HandshakeMode) -> Result<Box<[u8]>, Error>
-    where
-        E: Display,
-    {
+    fn handshake<E: Display>(
+        &mut self,
+        connection: &mut impl Connection<ErrorType = E>,
+        _mode: super::HandshakeMode,
+    ) -> Result<Box<[u8]>, Error> {
         let private_key = EphemeralSecret::new(OsRng);
         let public_key = PublicKey::from(&private_key);
 

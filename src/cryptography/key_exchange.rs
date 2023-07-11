@@ -1,5 +1,7 @@
 pub mod curve25519;
 
+use std::fmt::Display;
+
 use displaydoc::Display;
 use thiserror::Error;
 
@@ -19,7 +21,5 @@ pub enum Error {
 }
 
 pub trait KeyExchange {
-    fn handshake<E>(&mut self, connection: &mut impl Connection<E>, mode: HandshakeMode) -> Result<Box<[u8]>, Error>
-    where
-        E: std::fmt::Display;
+    fn handshake<E: Display>(&mut self, connection: &mut impl Connection<ErrorType = E>, mode: HandshakeMode) -> Result<Box<[u8]>, Error>;
 }

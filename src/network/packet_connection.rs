@@ -46,7 +46,9 @@ impl PacketConnection {
     }
 }
 
-impl Connection<Error> for PacketConnection {
+impl Connection for PacketConnection {
+    type ErrorType = Error;
+
     fn send(&mut self, packet: &[u8]) -> Result<(), Error> {
         self.tcp_stream.write_all(&(packet.len() as u32).to_le_bytes())?; // header
         self.tcp_stream.write_all(packet)?;

@@ -13,7 +13,9 @@ struct ChannelConnection {
     receiver: Receiver<Box<[u8]>>,
 }
 
-impl Connection<String> for ChannelConnection {
+impl Connection for ChannelConnection {
+    type ErrorType = String;
+
     fn send(&mut self, data: &[u8]) -> Result<(), String> {
         Ok(self.sender.send(Box::from(data.clone())).unwrap())
     }
@@ -47,7 +49,9 @@ fn successful_key_exchange() {
 
 struct FaultyConnection;
 
-impl Connection<String> for FaultyConnection {
+impl Connection for FaultyConnection {
+    type ErrorType = String;
+
     fn send(&mut self, _data: &[u8]) -> Result<(), String> {
         Ok(())
     }

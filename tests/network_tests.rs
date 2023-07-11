@@ -137,13 +137,13 @@ mod network_tests {
             let remote_stream = TcpStream::connect("127.0.0.1:5678").unwrap();
             let remote_con = PacketConnection::new(remote_stream, 1024);
             let mut enc_con =
-                EncryptedConnection::<Aes256Crypto, _, _>::with_handshake(remote_con, Curve25519, HandshakeMode::Client).unwrap();
+                EncryptedConnection::<Aes256Crypto, _>::with_handshake(remote_con, Curve25519, HandshakeMode::Client).unwrap();
             enc_con.send(b"top secret").unwrap();
         });
 
         let (local_stream, _) = listener.accept().unwrap();
         let local_con = PacketConnection::new(local_stream, 1024);
-        let mut enc_con = EncryptedConnection::<Aes256Crypto, _, _>::with_handshake(local_con, Curve25519, HandshakeMode::Client).unwrap();
+        let mut enc_con = EncryptedConnection::<Aes256Crypto, _>::with_handshake(local_con, Curve25519, HandshakeMode::Client).unwrap();
         assert_eq!(b"top secret".as_slice(), &enc_con.receive().unwrap());
 
         join_handle.join().unwrap();
