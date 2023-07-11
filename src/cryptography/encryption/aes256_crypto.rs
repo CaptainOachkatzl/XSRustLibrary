@@ -2,10 +2,10 @@ use aes_gcm::{
     aead::{AeadMut, OsRng},
     AeadCore, Aes256Gcm, KeyInit, Nonce,
 };
+use generic_array::{typenum::U32, GenericArray};
 
 use super::Encryption;
 
-pub const SHARED_SECRET_SIZE: usize = 32;
 pub const NONCE_SIZE: usize = 12;
 
 pub struct Aes256Crypto {
@@ -13,14 +13,16 @@ pub struct Aes256Crypto {
 }
 
 impl Aes256Crypto {
-    pub fn new(secret: &[u8; SHARED_SECRET_SIZE]) -> Self {
+    pub fn new(shared_secret: &GenericArray<u8, U32>) -> Self {
         Self {
-            crypto: Aes256Gcm::new(secret.into()),
+            crypto: Aes256Gcm::new(shared_secret),
         }
     }
 }
 
 impl Encryption for Aes256Crypto {
+    type SecretLength = U32;
+
     fn encrypt(&mut self, data: &[u8]) -> Result<Vec<u8>, super::Error> {
         let nonce = Aes256Gcm::generate_nonce(OsRng);
         let mut encrypted = match self.crypto.encrypt(&nonce, data) {
@@ -49,10 +51,7 @@ impl Encryption for Aes256Crypto {
         Ok(decrypted)
     }
 
-    fn initialize(shared_secret: &[u8]) -> Result<Box<Self>, super::Error> {
-        let sized_secret: [u8; SHARED_SECRET_SIZE] = shared_secret
-            .try_into()
-            .map_err(|_| super::Error::Initialization("Invalid secret size".to_string()))?;
-        Ok(Box::new(Self::new(&sized_secret)))
+    fn initialize(shared_secret: &GenericArray<u8, U32>) -> Result<Box<Self>, super::Error> {
+        Ok(Box::new(Self::new(shared_secret)))
     }
 }

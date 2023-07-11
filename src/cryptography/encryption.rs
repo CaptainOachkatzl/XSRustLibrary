@@ -1,6 +1,7 @@
 pub mod aes256_crypto;
 
 use displaydoc::Display;
+use generic_array::{ArrayLength, GenericArray};
 use thiserror::Error;
 
 #[derive(Debug, Display, Error)]
@@ -14,7 +15,11 @@ pub enum Error {
 }
 
 pub trait Encryption {
-    fn initialize(shared_secret: &[u8]) -> Result<Box<Self>, Error>;
+    type SecretLength;
+
+    fn initialize(shared_secret: &GenericArray<u8, Self::SecretLength>) -> Result<Box<Self>, Error>
+    where
+        Self::SecretLength: ArrayLength<u8>;
     fn encrypt(&mut self, data: &[u8]) -> Result<Vec<u8>, Error>;
     fn decrypt(&mut self, data: &[u8]) -> Result<Vec<u8>, Error>;
 }

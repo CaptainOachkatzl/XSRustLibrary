@@ -1,5 +1,6 @@
 use std::fmt::Display;
 
+use generic_array::{typenum::U32, GenericArray};
 use rand_core::OsRng;
 use x25519_dalek::{EphemeralSecret, PublicKey};
 
@@ -12,11 +13,13 @@ pub struct Curve25519;
 const PUB_KEY_BYTE_SIZE: usize = 32;
 
 impl KeyExchange for Curve25519 {
+    type SecretLength = U32;
+
     fn handshake<E: Display>(
         &mut self,
         connection: &mut impl Connection<ErrorType = E>,
         _mode: super::HandshakeMode,
-    ) -> Result<Box<[u8]>, Error> {
+    ) -> Result<GenericArray<u8, U32>, Error> {
         let private_key = EphemeralSecret::new(OsRng);
         let public_key = PublicKey::from(&private_key);
 
@@ -32,6 +35,8 @@ impl KeyExchange for Curve25519 {
         };
 
         // calculate shared secret
-        Ok(Box::new(private_key.diffie_hellman(&PublicKey::from(remote_pub_key)).to_bytes()))
+        Ok(GenericArray::from(
+            private_key.diffie_hellman(&PublicKey::from(remote_pub_key)).to_bytes(),
+        ))
     }
 }

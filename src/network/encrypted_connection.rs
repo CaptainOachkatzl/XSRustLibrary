@@ -1,6 +1,7 @@
 use std::fmt::Display;
 
 use displaydoc::Display;
+use generic_array::ArrayLength;
 use thiserror::Error;
 
 use crate::{
@@ -34,13 +35,20 @@ pub struct EncryptedConnection<Enc, Con> {
     connection: Con,
 }
 
-impl<Enc, Con> EncryptedConnection<Enc, Con>
+impl<Enc, Con, N> EncryptedConnection<Enc, Con>
 where
-    Enc: Encryption,
+    Enc: Encryption<SecretLength = N>,
     Con: Connection,
     <Con as Connection>::ErrorType: std::fmt::Display,
 {
-    pub fn with_handshake(mut connection: Con, mut kex: impl KeyExchange, mode: HandshakeMode) -> Result<Self, HandshakeError> {
+    pub fn with_handshake(
+        mut connection: Con,
+        mut kex: impl KeyExchange<SecretLength = N>,
+        mode: HandshakeMode,
+    ) -> Result<Self, HandshakeError>
+    where
+        N: ArrayLength<u8>,
+    {
         let secret = kex.handshake(&mut connection, mode)?;
         let crypto = Enc::initialize(&secret)?;
 

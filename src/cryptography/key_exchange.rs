@@ -3,6 +3,7 @@ pub mod curve25519;
 use std::fmt::Display;
 
 use displaydoc::Display;
+use generic_array::{ArrayLength, GenericArray};
 use thiserror::Error;
 
 use crate::connection::Connection;
@@ -21,5 +22,13 @@ pub enum Error {
 }
 
 pub trait KeyExchange {
-    fn handshake<E: Display>(&mut self, connection: &mut impl Connection<ErrorType = E>, mode: HandshakeMode) -> Result<Box<[u8]>, Error>;
+    type SecretLength;
+
+    fn handshake<E: Display>(
+        &mut self,
+        connection: &mut impl Connection<ErrorType = E>,
+        mode: HandshakeMode,
+    ) -> Result<GenericArray<u8, Self::SecretLength>, Error>
+    where
+        Self::SecretLength: ArrayLength<u8>;
 }
