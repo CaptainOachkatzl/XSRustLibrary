@@ -1,7 +1,7 @@
 use xs_rust_library::cryptography::encryption::{aes256_crypto::Aes256Crypto, Encryption};
 
 #[test]
-fn known_secret_nonce() {
+fn aes_256_crypto() {
     let secret = [1_u8; 32];
     let mut crypto = Aes256Crypto::new(&secret.into());
 
