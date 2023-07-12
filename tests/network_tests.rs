@@ -1,3 +1,6 @@
+mod performance;
+mod util;
+
 #[cfg(test)]
 mod network_tests {
     use std::{net::*, sync::*, thread};
@@ -9,7 +12,12 @@ mod network_tests {
             key_exchange::{curve25519::Curve25519, HandshakeMode},
         },
         encrypted_connection::EncryptedConnection,
-        packet_connection::{PacketConnection, packet_receive_event::PacketReceiveEvent},
+        packet_connection::{packet_receive_event::PacketReceiveEvent, PacketConnection},
+    };
+
+    use crate::{
+        performance::measure_connection_throughput,
+        util::test_connections::{new_aes_encrypted_connection_test_pair, new_packet_connection_test_pair, ChannelConnection},
     };
 
     #[test]
@@ -146,5 +154,39 @@ mod network_tests {
         assert_eq!(b"top secret".as_slice(), &enc_con.receive().unwrap());
 
         join_handle.join().unwrap();
+    }
+
+    #[test]
+    fn encrypted_big_data_connection() {
+        const PACKET_SIZE: usize = 1 * 1024 * 1024; // send a 1MB packet which is considerably larger than the usual MTU
+        let listener = TcpListener::bind("127.0.0.1:6789").unwrap();
+
+        let join_handle = thread::spawn(move || {
+            let remote_stream = TcpStream::connect("127.0.0.1:6789").unwrap();
+            let remote_con = PacketConnection::new(remote_stream, 1024);
+            let mut enc_con =
+                EncryptedConnection::<Aes256Crypto, _>::with_handshake(remote_con, Curve25519, HandshakeMode::Client).unwrap();
+            enc_con.send(&[1_u8; PACKET_SIZE]).unwrap();
+        });
+
+        let (local_stream, _) = listener.accept().unwrap();
+        let local_con = PacketConnection::new(local_stream, 1024);
+        let mut enc_con = EncryptedConnection::<Aes256Crypto, _>::with_handshake(local_con, Curve25519, HandshakeMode::Client).unwrap();
+        assert_eq!(PACKET_SIZE, enc_con.receive().unwrap().len());
+
+        join_handle.join().unwrap();
+    }
+
+    #[test]
+    #[ignore]
+    fn performance_tests() {
+        let (mut local_con, mut remote_con) = ChannelConnection::new_test_pair();
+        measure_connection_throughput(&mut local_con, &mut remote_con, "Channel");
+
+        let (mut local_con, mut remote_con) = new_packet_connection_test_pair();
+        measure_connection_throughput(&mut local_con, &mut remote_con, "Packet connection");
+
+        let (mut local_con, mut remote_con) = new_aes_encrypted_connection_test_pair(local_con, remote_con);
+        measure_connection_throughput(&mut local_con, &mut remote_con, "Encrypted connection");
     }
 }

@@ -1,6 +1,17 @@
-use std::sync::mpsc::{Receiver, Sender};
+use std::{
+    fmt::Display,
+    net::{TcpListener, TcpStream},
+    sync::mpsc::{Receiver, Sender},
+    thread,
+};
 
-use xs_rust_library::connection::Connection;
+use xs_rust_library::{
+    connection::Connection,
+    encrypted_connection::EncryptedConnection,
+    encryption::aes256_crypto::Aes256Crypto,
+    key_exchange::{curve25519::Curve25519, HandshakeMode},
+    packet_connection::PacketConnection,
+};
 
 pub struct ChannelConnection {
     pub sender: Sender<Box<[u8]>>,
@@ -50,4 +61,31 @@ impl Connection for FaultyConnection {
     fn receive(&mut self) -> Result<Vec<u8>, String> {
         Ok(Vec::new())
     }
+}
+
+pub fn new_packet_connection_test_pair() -> (PacketConnection, PacketConnection) {
+    let listener = TcpListener::bind("127.0.0.1:1234").unwrap();
+
+    let join_handle = thread::spawn(move || {
+        let remote_stream = TcpStream::connect("127.0.0.1:1234").unwrap();
+        PacketConnection::new(remote_stream, 1024)
+    });
+
+    let (local_stream, _) = listener.accept().unwrap();
+    let local_con = PacketConnection::new(local_stream, 1024);
+
+    let remote_con = join_handle.join().unwrap();
+    (local_con, remote_con)
+}
+
+pub fn new_aes_encrypted_connection_test_pair<E: Display, Con: Connection<ErrorType = E> + Send + Sync + 'static>(
+    local: Con,
+    remote: Con,
+) -> (EncryptedConnection<Aes256Crypto, Con>, EncryptedConnection<Aes256Crypto, Con>) {
+    let join_handle = thread::spawn(move || EncryptedConnection::with_handshake(remote, Curve25519, HandshakeMode::Client).unwrap());
+
+    let local_con = EncryptedConnection::with_handshake(local, Curve25519, HandshakeMode::Server).unwrap();
+
+    let remote_con = join_handle.join().unwrap();
+    (local_con, remote_con)
 }
