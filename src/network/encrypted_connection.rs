@@ -30,7 +30,7 @@ pub enum TransmissionError {
     DecryptMessage(encryption::Error),
 }
 
-/// an encrypted connection that has full modularity regarding its key exchange, 
+/// an encrypted connection that has full modularity regarding its key exchange,
 /// the encryption that is used and the underlying connection.
 pub struct EncryptedConnection<Enc, Con> {
     crypto: Enc,
