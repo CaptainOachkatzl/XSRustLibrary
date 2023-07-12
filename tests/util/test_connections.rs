@@ -23,7 +23,7 @@ pub struct ChannelConnection {
 impl Connection for ChannelConnection {
     type ErrorType = String;
 
-    fn send(&mut self, data: &[u8]) -> Result<(), String> {
+    fn send(&mut self, data: Vec<u8>) -> Result<(), String> {
         Ok(self.sender.send(Box::from(data.clone())).unwrap())
     }
 
@@ -56,7 +56,7 @@ pub struct FaultyConnection;
 impl Connection for FaultyConnection {
     type ErrorType = String;
 
-    fn send(&mut self, _data: &[u8]) -> Result<(), String> {
+    fn send(&mut self, _data: Vec<u8>) -> Result<(), String> {
         Ok(())
     }
 

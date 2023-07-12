@@ -24,7 +24,7 @@ impl KeyExchange for Curve25519 {
         let public_key = PublicKey::from(&private_key);
 
         connection
-            .send(public_key.as_bytes())
+            .send(public_key.as_bytes().to_vec())
             .map_err(|e| Error::Communication(e.to_string()))?;
 
         let pub_key_data = connection.receive().map_err(|e| Error::Communication(e.to_string()))?;

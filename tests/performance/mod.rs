@@ -6,8 +6,9 @@ use xs_rust_library::connection::Connection;
 
 pub fn measure_connection_throughput<E: Debug, Con: Connection<ErrorType = E>>(local_con: &mut Con, remote_con: &mut Con, test_name: &str) {
     for &load in TEST_LOADS {
+        let data = load.to_vec();
         let start = Instant::now();
-        local_con.send(load).unwrap();
+        local_con.send(data).unwrap();
         remote_con.receive().unwrap();
         let duration = start.elapsed();
         let load_size = load.len();

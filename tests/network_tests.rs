@@ -44,9 +44,9 @@ mod network_tests {
 
         let accept_stream: TcpStream = listener.accept().unwrap().0;
         let mut accept_connection = PacketConnection::new(accept_stream, 1024);
-        accept_connection.send(b"test123").unwrap();
-        accept_connection.send(b"abc").unwrap();
-        accept_connection.send(&[5 as u8; 10 * 1024 * 1024]).unwrap();
+        accept_connection.send(b"test123".to_vec()).unwrap();
+        accept_connection.send(b"abc".to_vec()).unwrap();
+        accept_connection.send([5 as u8; 10 * 1024 * 1024].to_vec()).unwrap();
     }
 
     fn connect_to_localhost() -> std::io::Result<()> {
@@ -75,7 +75,7 @@ mod network_tests {
 
     fn dummy_send(stream: TcpStream) {
         let mut packet_connection = PacketConnection::new(stream, 1024);
-        packet_connection.send(&[0 as u8; 8]).expect("sending failed");
+        packet_connection.send([0 as u8; 8].to_vec()).expect("sending failed");
     }
 
     #[test]
@@ -106,7 +106,7 @@ mod network_tests {
         });
 
         let mut accept_stream = PacketConnection::new(listener.accept().unwrap().0, 1024);
-        accept_stream.send(&[0 as u8; 4]).unwrap();
+        accept_stream.send([0 as u8; 4].to_vec()).unwrap();
 
         listening_barrier2.wait();
 
@@ -145,7 +145,7 @@ mod network_tests {
             let remote_con = PacketConnection::new(remote_stream, 1024);
             let mut enc_con =
                 EncryptedConnection::<Aes256Crypto, _>::with_handshake(remote_con, Curve25519, HandshakeMode::Client).unwrap();
-            enc_con.send(b"top secret").unwrap();
+            enc_con.send(b"top secret".to_vec()).unwrap();
         });
 
         let (local_stream, _) = listener.accept().unwrap();
@@ -166,7 +166,7 @@ mod network_tests {
             let remote_con = PacketConnection::new(remote_stream, 1024);
             let mut enc_con =
                 EncryptedConnection::<Aes256Crypto, _>::with_handshake(remote_con, Curve25519, HandshakeMode::Client).unwrap();
-            enc_con.send(&[1_u8; PACKET_SIZE]).unwrap();
+            enc_con.send([1_u8; PACKET_SIZE].to_vec()).unwrap();
         });
 
         let (local_stream, _) = listener.accept().unwrap();
