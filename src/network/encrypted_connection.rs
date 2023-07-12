@@ -79,7 +79,7 @@ where
 
     /// send data that will be encrypted with the crypto module.
     fn send(&mut self, data: &[u8]) -> Result<(), TransmissionError> {
-        let encrypted = self.crypto.encrypt(data).map_err(TransmissionError::DecryptMessage)?;
+        let encrypted = self.crypto.encrypt(data).map_err(TransmissionError::EncryptMessage)?;
         self.connection
             .send(&encrypted)
             .map_err(|e| TransmissionError::Connection(e.to_string()))
@@ -91,6 +91,6 @@ where
             .connection
             .receive()
             .map_err(|e| TransmissionError::Connection(e.to_string()))?;
-        self.crypto.decrypt(&packet).map_err(TransmissionError::EncryptMessage)
+        self.crypto.decrypt(&packet).map_err(TransmissionError::DecryptMessage)
     }
 }
