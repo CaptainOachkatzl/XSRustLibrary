@@ -83,9 +83,17 @@ where
         }
 
         let mut write_lock = RwLockUpgradableReadGuard::upgrade(read_lock);
-        let unlocked_cache = &mut *write_lock;
+        let writable_cache = &mut *write_lock;
+
+        // check if, in the meantime, another writer already filled the cache entry
+        if let Some(val) = writable_cache.get(&key) {
+            return val.clone();
+        }
+
+        // now, that we simultaneously hold the write lock and know there is nothing in the cache,
+        // we produce the cache entry
         let val = Arc::new((self.factory_fn)(key.clone()));
-        unlocked_cache.insert(key, val.clone());
+        writable_cache.insert(key, val.clone());
         val
     }
 }
