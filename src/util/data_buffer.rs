@@ -1,5 +1,7 @@
 #![allow(unused)]
 
+use std::{io::BufReader, slice::Windows};
+
 /// low level buffer struct to allow for window views into the data without copying/moving it
 #[derive(Clone)]
 pub struct DataBuffer {
@@ -19,15 +21,11 @@ impl DataBuffer {
         }
     }
 
-    /// reset the reading window to the start of the buffer.
-    pub fn reset_read_window(&mut self, end: usize) {
+    /// refill the internal buffer with data. the `refill_internal_buffer` closure needs to return how many bytes of the buffer were filled.
+    pub fn refill<E>(&mut self, refill_internal_buffer: impl FnOnce(&mut Vec<u8>) -> Result<usize, E>) -> Result<(), E> {
+        self.end_pos = refill_internal_buffer(&mut self.buffer)?;
         self.current_pos = 0;
-        self.end_pos = end;
-    }
-
-    /// get the internal buffer to refill it with data. call `reset_window` after buffer is filled.
-    pub fn get_mut_buffer(&mut self) -> &mut Vec<u8> {
-        &mut self.buffer
+        Ok(())
     }
 
     /// read the next <count> bytes. future reads/takes will be able to read the data again.
