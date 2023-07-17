@@ -22,7 +22,7 @@ impl DataBuffer {
     }
 
     /// refill the internal buffer with data. the `refill_internal_buffer` closure needs to return how many bytes of the buffer were filled.
-    pub fn refill<E>(&mut self, refill_internal_buffer: impl FnOnce(&mut Vec<u8>) -> Result<usize, E>) -> Result<(), E> {
+    pub fn refill<E>(&mut self, refill_internal_buffer: impl FnOnce(&mut [u8]) -> Result<usize, E>) -> Result<(), E> {
         self.end_pos = refill_internal_buffer(&mut self.buffer)?;
         self.current_pos = 0;
         Ok(())
