@@ -1,7 +1,6 @@
 use std::fmt::Display;
 
 use generic_array::{typenum::U32, GenericArray};
-use rand_core::OsRng;
 use x25519_dalek::{EphemeralSecret, PublicKey};
 
 use crate::connection::Connection;
@@ -20,7 +19,7 @@ impl KeyExchange for Curve25519 {
         connection: &mut impl Connection<ErrorType = E>,
         _mode: super::HandshakeMode,
     ) -> Result<GenericArray<u8, U32>, Error> {
-        let private_key = EphemeralSecret::new(OsRng);
+        let private_key = EphemeralSecret::random();
         let public_key = PublicKey::from(&private_key);
 
         connection

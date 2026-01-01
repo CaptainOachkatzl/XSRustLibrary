@@ -38,7 +38,9 @@ impl Encryption for Aes256Crypto {
 
     fn decrypt(&mut self, data: &[u8]) -> Result<Vec<u8>, super::Error> {
         if data.len() < NONCE_SIZE {
-            return Err(super::Error::Encryption("Encrypted message does not contain nonce.".to_string()));
+            return Err(super::Error::Encryption(
+                "Encrypted message does not contain nonce.".to_string(),
+            ));
         }
 
         let nonce_start = data.len() - NONCE_SIZE;
