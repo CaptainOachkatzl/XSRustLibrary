@@ -11,7 +11,7 @@ use xs_rust_library::{
     connection::Connection,
     encrypted_connection::EncryptedConnection,
     encryption::aes256_crypto::Aes256Crypto,
-    key_exchange::{curve25519::Curve25519, HandshakeMode},
+    key_exchange::{HandshakeMode, curve25519::Curve25519},
     packet_connection::PacketConnection,
 };
 
@@ -24,7 +24,7 @@ impl Connection for ChannelConnection {
     type ErrorType = String;
 
     fn send(&mut self, data: &[u8]) -> Result<(), String> {
-        Ok(self.sender.send(Box::from(data.clone())).unwrap())
+        Ok(self.sender.send(Box::from(data)).unwrap())
     }
 
     fn receive(&mut self) -> Result<Vec<u8>, String> {
@@ -80,13 +80,22 @@ pub fn new_packet_connection_test_pair() -> (PacketConnection, PacketConnection)
     (local_con, remote_con)
 }
 
-pub fn new_aes_encrypted_connection_test_pair<E: Display, Con: Connection<ErrorType = E> + Send + Sync + 'static>(
+pub fn new_aes_encrypted_connection_test_pair<
+    E: Display,
+    Con: Connection<ErrorType = E> + Send + Sync + 'static,
+>(
     local: Con,
     remote: Con,
-) -> (EncryptedConnection<Aes256Crypto, Con>, EncryptedConnection<Aes256Crypto, Con>) {
-    let join_handle = thread::spawn(move || EncryptedConnection::with_handshake(remote, Curve25519, HandshakeMode::Client).unwrap());
+) -> (
+    EncryptedConnection<Aes256Crypto, Con>,
+    EncryptedConnection<Aes256Crypto, Con>,
+) {
+    let join_handle = thread::spawn(move || {
+        EncryptedConnection::with_handshake(remote, Curve25519, HandshakeMode::Client).unwrap()
+    });
 
-    let local_con = EncryptedConnection::with_handshake(local, Curve25519, HandshakeMode::Server).unwrap();
+    let local_con =
+        EncryptedConnection::with_handshake(local, Curve25519, HandshakeMode::Server).unwrap();
 
     let remote_con = join_handle.join().unwrap();
     (local_con, remote_con)

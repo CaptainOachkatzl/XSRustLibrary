@@ -8,7 +8,9 @@ pub struct Subscription<T> {
 
 impl<T> Subscription<T> {
     pub fn new(shared: Arc<EventHandler<T>>) -> Subscription<T> {
-        Subscription::<T> { shared_ptr: Some(shared) }
+        Subscription::<T> {
+            shared_ptr: Some(shared),
+        }
     }
 
     pub fn unsubscribe(&mut self) {
@@ -28,7 +30,9 @@ impl<T: 'static> Default for SubscriptionStorage<T> {
 
 impl<T: 'static> SubscriptionStorage<T> {
     pub fn new() -> Self {
-        Self { subscribers: vec![] }
+        Self {
+            subscribers: vec![],
+        }
     }
 
     pub fn add_event_handler(&mut self, event_handler: Box<EventHandler<T>>) -> Subscription<T> {

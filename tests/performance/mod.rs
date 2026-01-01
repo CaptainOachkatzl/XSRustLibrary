@@ -4,7 +4,11 @@ use std::{fmt::Debug, time::Instant};
 
 use xs_rust_library::connection::Connection;
 
-pub fn measure_connection_throughput<E: Debug, Con: Connection<ErrorType = E>>(local_con: &mut Con, remote_con: &mut Con, test_name: &str) {
+pub fn measure_connection_throughput<E: Debug, Con: Connection<ErrorType = E>>(
+    local_con: &mut Con,
+    remote_con: &mut Con,
+    test_name: &str,
+) {
     for &load in TEST_LOADS {
         let start = Instant::now();
         local_con.send(load).unwrap();
@@ -16,4 +20,8 @@ pub fn measure_connection_throughput<E: Debug, Con: Connection<ErrorType = E>>(l
     }
 }
 
-static TEST_LOADS: &[&[u8]] = &[&[0_u8; 1024], &[5_u8; 1024 * 1024], &[10_u8; 100 * 1024 * 1024]];
+static TEST_LOADS: &[&[u8]] = &[
+    &[0_u8; 1024],
+    &[5_u8; 1024 * 1024],
+    &[10_u8; 100 * 1024 * 1024],
+];

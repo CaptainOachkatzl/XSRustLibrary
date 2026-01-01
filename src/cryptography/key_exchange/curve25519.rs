@@ -1,6 +1,6 @@
 use std::fmt::Display;
 
-use generic_array::{typenum::U32, GenericArray};
+use generic_array::{GenericArray, typenum::U32};
 use x25519_dalek::{EphemeralSecret, PublicKey};
 
 use crate::connection::Connection;
@@ -26,16 +26,24 @@ impl KeyExchange for Curve25519 {
             .send(public_key.as_bytes())
             .map_err(|e| Error::Communication(e.to_string()))?;
 
-        let pub_key_data = connection.receive().map_err(|e| Error::Communication(e.to_string()))?;
+        let pub_key_data = connection
+            .receive()
+            .map_err(|e| Error::Communication(e.to_string()))?;
 
         let remote_pub_key: [u8; PUB_KEY_BYTE_SIZE] = match pub_key_data.try_into() {
             Ok(v) => v,
-            Err(_) => return Err(super::Error::Handshake("Invalid remote public key size".to_string())),
+            Err(_) => {
+                return Err(super::Error::Handshake(
+                    "Invalid remote public key size".to_string(),
+                ));
+            }
         };
 
         // calculate shared secret
         Ok(GenericArray::from(
-            private_key.diffie_hellman(&PublicKey::from(remote_pub_key)).to_bytes(),
+            private_key
+                .diffie_hellman(&PublicKey::from(remote_pub_key))
+                .to_bytes(),
         ))
     }
 }

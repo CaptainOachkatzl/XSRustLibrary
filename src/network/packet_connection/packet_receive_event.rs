@@ -9,7 +9,7 @@ use thiserror::Error;
 
 use crate::{
     connection::Connection,
-    events::{event::Event, subscription::Subscription, Invokable, Subscribable},
+    events::{Invokable, Subscribable, event::Event, subscription::Subscription},
     packet_connection,
 };
 
@@ -65,7 +65,9 @@ impl PacketReceiveEvent {
 
     // returns true if the bool was set to true
     fn set_atomic_bool(&self, value: &AtomicBool) -> bool {
-        value.compare_exchange(false, true, Ordering::SeqCst, Ordering::SeqCst).is_ok()
+        value
+            .compare_exchange(false, true, Ordering::SeqCst, Ordering::SeqCst)
+            .is_ok()
     }
 
     pub fn stop(&self) -> Result<(), Error> {

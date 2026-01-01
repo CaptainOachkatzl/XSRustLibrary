@@ -1,4 +1,4 @@
-use xs_rust_library::cryptography::encryption::{aes256_crypto::Aes256Crypto, Encryption};
+use xs_rust_library::cryptography::encryption::{Encryption, aes256_crypto::Aes256Crypto};
 
 #[test]
 fn aes_256_crypto() {

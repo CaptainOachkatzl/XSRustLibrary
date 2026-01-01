@@ -1,6 +1,6 @@
 use std::sync::Arc;
 
-use crate::{subscription::SubscriptionStorage, EventHandler};
+use crate::{EventHandler, subscription::SubscriptionStorage};
 
 use super::{InvokableOnce, Subscribable, Subscription};
 

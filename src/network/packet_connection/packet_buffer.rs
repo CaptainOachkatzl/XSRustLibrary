@@ -42,7 +42,8 @@ impl PacketBuffer {
         } else {
             // all the data fits in the current packet
             let remaining_data = data.take_to_end();
-            self.buffer[self.current_pos..self.current_pos + remaining_data.len()].clone_from_slice(remaining_data);
+            self.buffer[self.current_pos..self.current_pos + remaining_data.len()]
+                .clone_from_slice(remaining_data);
             self.current_pos += remaining_data.len();
 
             if self.remaining_space() > 0 {

@@ -58,7 +58,10 @@ fn confirm_stable_cache() {
 fn parallel_test() {
     const THREAD_COUNT: usize = 100;
 
-    let factory_cache = Arc::new(FactoryCache::new(BTreeMap::new(), Box::new(generate_square)));
+    let factory_cache = Arc::new(FactoryCache::new(
+        BTreeMap::new(),
+        Box::new(generate_square),
+    ));
 
     let barrier = Arc::new(Barrier::new(THREAD_COUNT));
     let mut thread_handles = vec![];
@@ -77,7 +80,10 @@ fn parallel_test() {
     }
 }
 
-fn execute_workload(thread_id: usize, factory_cache: Arc<FactoryCache<i64, i64, BTreeMap<i64, Arc<i64>>>>) {
+fn execute_workload(
+    thread_id: usize,
+    factory_cache: Arc<FactoryCache<i64, i64, BTreeMap<i64, Arc<i64>>>>,
+) {
     const WORKLOAD: i64 = 1000;
     const BATCH_SIZE: i64 = 10;
 

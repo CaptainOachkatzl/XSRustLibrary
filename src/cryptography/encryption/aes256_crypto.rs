@@ -1,8 +1,8 @@
 use aes_gcm::{
-    aead::{AeadMut, OsRng},
     AeadCore, Aes256Gcm, KeyInit, Nonce,
+    aead::{AeadMut, OsRng},
 };
-use generic_array::{typenum::U32, GenericArray};
+use generic_array::{GenericArray, typenum::U32};
 
 use super::Encryption;
 

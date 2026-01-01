@@ -9,15 +9,18 @@ mod network_tests {
         connection::Connection,
         cryptography::{
             encryption::aes256_crypto::Aes256Crypto,
-            key_exchange::{curve25519::Curve25519, HandshakeMode},
+            key_exchange::{HandshakeMode, curve25519::Curve25519},
         },
         encrypted_connection::EncryptedConnection,
-        packet_connection::{packet_receive_event::PacketReceiveEvent, PacketConnection},
+        packet_connection::{PacketConnection, packet_receive_event::PacketReceiveEvent},
     };
 
     use crate::{
         performance::measure_connection_throughput,
-        util::test_connections::{new_aes_encrypted_connection_test_pair, new_packet_connection_test_pair, ChannelConnection},
+        util::test_connections::{
+            ChannelConnection, new_aes_encrypted_connection_test_pair,
+            new_packet_connection_test_pair,
+        },
     };
 
     #[test]
@@ -46,7 +49,9 @@ mod network_tests {
         let mut accept_connection = PacketConnection::new(accept_stream, 1024);
         accept_connection.send(b"test123").unwrap();
         accept_connection.send(b"abc").unwrap();
-        accept_connection.send(&[5 as u8; 10 * 1024 * 1024]).unwrap();
+        accept_connection
+            .send(&[5 as u8; 10 * 1024 * 1024])
+            .unwrap();
     }
 
     fn connect_to_localhost() -> std::io::Result<()> {
@@ -75,7 +80,9 @@ mod network_tests {
 
     fn dummy_send(stream: TcpStream) {
         let mut packet_connection = PacketConnection::new(stream, 1024);
-        packet_connection.send(&[0 as u8; 8]).expect("sending failed");
+        packet_connection
+            .send(&[0 as u8; 8])
+            .expect("sending failed");
     }
 
     #[test]
@@ -143,14 +150,23 @@ mod network_tests {
         let join_handle = thread::spawn(move || {
             let remote_stream = TcpStream::connect("127.0.0.1:5678").unwrap();
             let remote_con = PacketConnection::new(remote_stream, 1024);
-            let mut enc_con =
-                EncryptedConnection::<Aes256Crypto, _>::with_handshake(remote_con, Curve25519, HandshakeMode::Client).unwrap();
+            let mut enc_con = EncryptedConnection::<Aes256Crypto, _>::with_handshake(
+                remote_con,
+                Curve25519,
+                HandshakeMode::Client,
+            )
+            .unwrap();
             enc_con.send(b"top secret").unwrap();
         });
 
         let (local_stream, _) = listener.accept().unwrap();
         let local_con = PacketConnection::new(local_stream, 1024);
-        let mut enc_con = EncryptedConnection::<Aes256Crypto, _>::with_handshake(local_con, Curve25519, HandshakeMode::Client).unwrap();
+        let mut enc_con = EncryptedConnection::<Aes256Crypto, _>::with_handshake(
+            local_con,
+            Curve25519,
+            HandshakeMode::Client,
+        )
+        .unwrap();
         assert_eq!(b"top secret".as_slice(), &enc_con.receive().unwrap());
 
         join_handle.join().unwrap();
@@ -164,14 +180,23 @@ mod network_tests {
         let join_handle = thread::spawn(move || {
             let remote_stream = TcpStream::connect("127.0.0.1:6789").unwrap();
             let remote_con = PacketConnection::new(remote_stream, 1024);
-            let mut enc_con =
-                EncryptedConnection::<Aes256Crypto, _>::with_handshake(remote_con, Curve25519, HandshakeMode::Client).unwrap();
+            let mut enc_con = EncryptedConnection::<Aes256Crypto, _>::with_handshake(
+                remote_con,
+                Curve25519,
+                HandshakeMode::Client,
+            )
+            .unwrap();
             enc_con.send(&[1_u8; PACKET_SIZE]).unwrap();
         });
 
         let (local_stream, _) = listener.accept().unwrap();
         let local_con = PacketConnection::new(local_stream, 1024);
-        let mut enc_con = EncryptedConnection::<Aes256Crypto, _>::with_handshake(local_con, Curve25519, HandshakeMode::Client).unwrap();
+        let mut enc_con = EncryptedConnection::<Aes256Crypto, _>::with_handshake(
+            local_con,
+            Curve25519,
+            HandshakeMode::Client,
+        )
+        .unwrap();
         assert_eq!(PACKET_SIZE, enc_con.receive().unwrap().len());
 
         join_handle.join().unwrap();
@@ -186,7 +211,8 @@ mod network_tests {
         let (mut local_con, mut remote_con) = new_packet_connection_test_pair();
         measure_connection_throughput(&mut local_con, &mut remote_con, "Packet connection");
 
-        let (mut local_con, mut remote_con) = new_aes_encrypted_connection_test_pair(local_con, remote_con);
+        let (mut local_con, mut remote_con) =
+            new_aes_encrypted_connection_test_pair(local_con, remote_con);
         measure_connection_throughput(&mut local_con, &mut remote_con, "Encrypted connection");
     }
 }
