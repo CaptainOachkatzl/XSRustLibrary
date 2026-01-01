@@ -6,7 +6,6 @@ pub mod packet_receive_event;
 use std::{
     io::Write,
     net::{Shutdown, TcpStream},
-    u8,
 };
 
 use displaydoc::Display;
@@ -54,7 +53,8 @@ impl Connection for PacketConnection {
     type ErrorType = Error;
 
     fn send(&mut self, packet: &[u8]) -> Result<(), Error> {
-        self.tcp_stream.write_all(&(packet.len() as u32).to_le_bytes())?; // header
+        self.tcp_stream
+            .write_all(&(packet.len() as u32).to_le_bytes())?; // header
         self.tcp_stream.write_all(packet)?;
         self.tcp_stream.flush()?;
         Ok(())
