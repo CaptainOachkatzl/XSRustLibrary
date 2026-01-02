@@ -1,4 +1,5 @@
 mod constants;
+mod header;
 mod packet_assembly;
 mod packet_buffer;
 pub mod packet_receive_event;
