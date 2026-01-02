@@ -1,5 +1,6 @@
 use crate::data_buffer::DataBuffer;
 
+#[derive(PartialEq, Eq)]
 pub enum PacketState {
     Finished,
     RequiresData,
@@ -38,10 +39,11 @@ impl PacketBuffer {
         let remaining_space = self.remaining_space();
         if data.remaining() > remaining_space {
             // since too much data is availabe for the current packet, fill it up and keep unused data in the buffer
-            self.buffer.clone_from_slice(data.read(remaining_space));
+            self.buffer
+                .clone_from_slice(data.read_slice(remaining_space));
         } else {
             // all the data fits in the current packet
-            let remaining_data = data.read_to_end();
+            let remaining_data = data.read_slice_to_end();
             self.buffer[self.current_pos..self.current_pos + remaining_data.len()]
                 .clone_from_slice(remaining_data);
             self.current_pos += remaining_data.len();

@@ -1,4 +1,3 @@
-mod constants;
 mod header;
 mod packet_assembly;
 mod packet_buffer;
@@ -12,7 +11,7 @@ use std::{
 use displaydoc::Display;
 use thiserror::Error;
 
-use crate::connection::Connection;
+use crate::{connection::Connection, packet_connection::header::Header};
 
 use packet_assembly::PacketAssembly;
 
@@ -53,10 +52,10 @@ impl PacketConnection {
 impl Connection for PacketConnection {
     type ErrorType = Error;
 
-    fn send(&mut self, packet: &[u8]) -> Result<(), Error> {
-        self.tcp_stream
-            .write_all(&(packet.len() as u32).to_le_bytes())?; // header
-        self.tcp_stream.write_all(packet)?;
+    fn send(&mut self, packet_content: &[u8]) -> Result<(), Error> {
+        let header = Header::from_packet_content(packet_content);
+        header.write(&mut self.tcp_stream)?;
+        self.tcp_stream.write_all(packet_content)?;
         self.tcp_stream.flush()?;
         Ok(())
     }

@@ -9,7 +9,7 @@ pub struct Header {
 }
 
 impl Header {
-    pub fn from_packet_data(packet_data: &[u8]) -> Self {
+    pub fn from_packet_content(packet_data: &[u8]) -> Self {
         Self {
             packet_size: packet_data.len(),
         }
