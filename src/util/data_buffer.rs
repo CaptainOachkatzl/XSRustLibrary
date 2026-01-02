@@ -1,6 +1,9 @@
 #![allow(unused)]
 
-use std::{io::BufReader, slice::Windows};
+use std::{
+    io::{BufReader, Read},
+    slice::Windows,
+};
 
 /// low level buffer struct to allow for window views into the data without copying/moving it
 #[derive(Clone)]
@@ -21,30 +24,27 @@ impl DataBuffer {
         }
     }
 
-    /// refill the internal buffer with data. the `refill_internal_buffer` closure needs to return how many bytes of the buffer were filled.
-    pub fn refill<E>(
-        &mut self,
-        refill_internal_buffer: impl FnOnce(&mut [u8]) -> Result<usize, E>,
-    ) -> Result<(), E> {
-        self.end_pos = refill_internal_buffer(&mut self.buffer)?;
+    /// refill the internal buffer with any data source that implements the `Read` trait.
+    pub fn refill(&mut self, data: &mut impl Read) -> Result<usize, std::io::Error> {
+        self.end_pos = data.read(&mut self.buffer)?;
         self.current_pos = 0;
-        Ok(())
+        Ok(self.end_pos)
     }
 
     /// read the next <count> bytes. future reads/takes will be able to read the data again.
-    pub fn read(&self, count: usize) -> &[u8] {
+    pub fn peek(&self, count: usize) -> &[u8] {
         let start = self.current_pos;
         let end = std::cmp::min(self.current_pos + count, self.end_pos);
         &self.buffer[start..end]
     }
 
     /// read until the end. future reads/takes will still read this data.
-    pub fn read_to_end(&self) -> &[u8] {
+    pub fn peek_to_end(&self) -> &[u8] {
         &self.buffer[self.current_pos..self.end_pos]
     }
 
     /// read the next <count> bytes. future reads/takes wont be able to read the taken data again.
-    pub fn take(&mut self, count: usize) -> &[u8] {
+    pub fn read(&mut self, count: usize) -> &[u8] {
         let start = self.current_pos;
         let end = std::cmp::min(self.current_pos + count, self.end_pos);
         self.current_pos += count;
@@ -52,7 +52,7 @@ impl DataBuffer {
     }
 
     /// read until the end. future reads/takes wont read any data.
-    pub fn take_to_end(&mut self) -> &[u8] {
+    pub fn read_to_end(&mut self) -> &[u8] {
         let start = self.current_pos;
         self.current_pos = self.end_pos;
         &self.buffer[start..self.end_pos]
@@ -67,11 +67,11 @@ impl DataBuffer {
         self.end_pos - self.current_pos
     }
 
-    fn get_current_position(&self) -> usize {
+    fn current_position(&self) -> usize {
         self.current_pos
     }
 
-    fn get_end_position(&self) -> usize {
+    fn end_position(&self) -> usize {
         self.end_pos
     }
 }

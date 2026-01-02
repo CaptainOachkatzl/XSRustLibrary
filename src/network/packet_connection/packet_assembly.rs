@@ -5,7 +5,7 @@ use super::{
     packet_buffer::{PacketBuffer, PacketState},
 };
 use displaydoc::Display;
-use std::{io::Read, net::TcpStream};
+use std::io::Read;
 use thiserror::Error;
 
 #[derive(Debug, Display, Error)]
@@ -30,9 +30,9 @@ impl PacketAssembly {
         }
     }
 
-    pub fn receive_packet(&mut self, tcp_stream: &mut TcpStream) -> Result<Vec<u8>, Error> {
+    pub fn receive_packet(&mut self, data: &mut impl Read) -> Result<Vec<u8>, Error> {
         if self.buffer.is_empty() {
-            self.receive_next_packet_chunk(tcp_stream)?;
+            self.receive_next_packet_chunk(data)?;
         }
 
         // create a new packet
@@ -42,19 +42,15 @@ impl PacketAssembly {
         loop {
             match packet.fill(&mut self.buffer) {
                 PacketState::Finished => return Ok(packet.into_vec()),
-                PacketState::RequiresData => self.receive_next_packet_chunk(tcp_stream)?,
+                PacketState::RequiresData => self.receive_next_packet_chunk(data)?,
             }
         }
     }
 
-    fn receive_next_packet_chunk(&mut self, tcp_stream: &mut TcpStream) -> Result<(), Error> {
-        self.buffer.refill(|buffer| {
-            let size = tcp_stream.read(buffer)?;
-            if size == 0 {
-                return Err(Error::ReceivedFin);
-            }
-            Ok(size)
-        })?;
+    fn receive_next_packet_chunk(&mut self, data: &mut impl Read) -> Result<(), Error> {
+        if self.buffer.refill(data)? == 0 {
+            return Err(Error::ReceivedFin);
+        }
 
         Ok(())
     }
@@ -62,7 +58,7 @@ impl PacketAssembly {
 
 /// read the first 4 bytes of the buffer to determine the packet size
 fn get_packet_size(data: &mut DataBuffer) -> Result<usize, Error> {
-    let header = data.take(HEADER_SIZE);
+    let header = data.read(HEADER_SIZE);
     if header.len() < HEADER_SIZE {
         return Err(Error::InvalidData);
     }
