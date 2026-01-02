@@ -11,9 +11,9 @@ pub struct PacketBuffer {
 }
 
 impl PacketBuffer {
-    pub fn new(capacity: usize) -> Self {
+    pub fn new(packet_size: usize) -> Self {
         Self {
-            buffer: vec![0_u8; capacity],
+            buffer: vec![0_u8; packet_size],
             current_pos: 0,
         }
     }
