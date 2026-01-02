@@ -2,6 +2,7 @@
 
 use std::{fmt::Debug, time::Instant};
 
+use bytesize::ByteSize;
 use xs_rust_library::connection::Connection;
 
 pub fn measure_connection_throughput<E: Debug, Con: Connection<ErrorType = E>>(
@@ -16,7 +17,10 @@ pub fn measure_connection_throughput<E: Debug, Con: Connection<ErrorType = E>>(
         let duration = start.elapsed();
         let load_size = load.len();
         let bytes_per_sec = load.len() as f64 / duration.as_secs_f64();
-        println!("{test_name}: {bytes_per_sec} B/s, size = {load_size}, duration = {duration:?}")
+        let formatted_bytes_per_sec = ByteSize::b(bytes_per_sec as u64).display().si();
+        println!(
+            "{test_name}: {formatted_bytes_per_sec}/s, size = {load_size}, duration = {duration:?}"
+        )
     }
 }
 
