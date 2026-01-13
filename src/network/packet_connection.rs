@@ -3,15 +3,12 @@ mod packet_assembly;
 mod packet_buffer;
 pub mod packet_receive_event;
 
-use std::{
-    io::Write,
-    net::{Shutdown, TcpStream},
-};
+use std::net::{Shutdown, TcpStream};
 
 use displaydoc::Display;
 use thiserror::Error;
 
-use crate::{connection::Connection, packet_connection::header::Header};
+use crate::connection::Connection;
 
 use packet_assembly::PacketAssembly;
 
@@ -53,11 +50,10 @@ impl Connection for PacketConnection {
     type ErrorType = Error;
 
     fn send(&mut self, packet_content: &[u8]) -> Result<(), Error> {
-        let header = Header::from_packet_content(packet_content);
-        header.write(&mut self.tcp_stream)?;
-        self.tcp_stream.write_all(packet_content)?;
-        self.tcp_stream.flush()?;
-        Ok(())
+        Ok(PacketAssembly::write_packet(
+            &mut self.tcp_stream,
+            packet_content,
+        )?)
     }
 
     fn receive(&mut self) -> Result<Vec<u8>, Error> {

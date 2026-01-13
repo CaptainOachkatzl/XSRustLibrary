@@ -5,7 +5,7 @@ use crate::{
 
 use super::packet_buffer::{PacketBuffer, PacketState};
 use displaydoc::Display;
-use std::io::{Cursor, Read};
+use std::io::{Cursor, Read, Write};
 use thiserror::Error;
 
 #[derive(Debug, Display, Error)]
@@ -28,6 +28,17 @@ impl PacketAssembly {
         PacketAssembly {
             buffer: DataBuffer::new(buffer_size),
         }
+    }
+
+    pub fn write_packet(
+        transmission_buffer: &mut impl Write,
+        packet_content: &[u8],
+    ) -> Result<(), std::io::Error> {
+        let header = Header::from_packet_content(packet_content);
+        header.write(transmission_buffer)?;
+        transmission_buffer.write_all(packet_content)?;
+        transmission_buffer.flush()?;
+        Ok(())
     }
 
     pub fn receive_packet(&mut self, data: &mut impl Read) -> Result<Vec<u8>, Error> {
