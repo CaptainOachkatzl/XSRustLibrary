@@ -77,34 +77,47 @@ impl PacketAssembly {
 
 #[cfg(test)]
 mod tests {
-    use std::io::Cursor;
+    use std::io::{Cursor, Seek};
 
     use super::*;
 
     #[test]
     fn assemble_from_single_byte_chunks() {
         let data = b"0123";
-        let assembled_data = assemble_packet_with_local_buffer(PacketAssembly::new(1), data);
+        let mut buffer = Cursor::new(Vec::new());
+        PacketAssembly::write_packet(&mut buffer, data).unwrap();
+        let assembled_data = PacketAssembly::new(1).receive_packet(&mut buffer).unwrap();
         assert_eq!(&assembled_data, data);
     }
 
     #[test]
     fn assemble_large_packet() {
         let data = &[1; 1024 * 1024];
-        let assembled_data = assemble_packet_with_local_buffer(PacketAssembly::new(1024), data);
+        let mut buffer = Cursor::new(Vec::new());
+        PacketAssembly::write_packet(&mut buffer, data).unwrap();
+        let assembled_data = PacketAssembly::new(1024)
+            .receive_packet(&mut buffer)
+            .unwrap();
         assert_eq!(&assembled_data, data);
     }
 
-    /// a local buffer is emulating a transmitted package
-    fn assemble_packet_with_local_buffer(
-        mut packet_assembly: PacketAssembly,
-        packet_data: &[u8],
-    ) -> Vec<u8> {
-        let header = Header::from_packet_content(packet_data);
-        let mut send_packet = Vec::with_capacity(HEADER_SIZE + packet_data.len());
-        header.write(&mut send_packet).unwrap();
-        send_packet.extend_from_slice(packet_data);
-        let mut data_reader = Cursor::new(send_packet);
-        packet_assembly.receive_packet(&mut data_reader).unwrap()
+    #[test]
+    fn assemble_multiple() {
+        let mut buffer = Cursor::new(Vec::new());
+
+        const PACKET_COUNT: usize = 10;
+        const PACKET_SIZE: usize = 10;
+        for i in 0..PACKET_COUNT {
+            let packet_content = &[i as u8; PACKET_SIZE];
+            PacketAssembly::write_packet(&mut buffer, &packet_content[..]).unwrap();
+        }
+
+        buffer.rewind().unwrap();
+
+        let mut packet_assembly = PacketAssembly::new(HEADER_SIZE + PACKET_SIZE);
+        for i in 0..PACKET_COUNT {
+            let packet_content = packet_assembly.receive_packet(&mut buffer).unwrap();
+            assert_eq!(packet_content, &[i as u8; PACKET_SIZE]);
+        }
     }
 }
