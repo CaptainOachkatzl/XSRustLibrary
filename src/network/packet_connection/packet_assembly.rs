@@ -86,6 +86,7 @@ mod tests {
         let data = b"0123";
         let mut buffer = Cursor::new(Vec::new());
         PacketAssembly::write_packet(&mut buffer, data).unwrap();
+        buffer.rewind().unwrap();
         let assembled_data = PacketAssembly::new(1).receive_packet(&mut buffer).unwrap();
         assert_eq!(&assembled_data, data);
     }
@@ -95,6 +96,7 @@ mod tests {
         let data = &[1; 1024 * 1024];
         let mut buffer = Cursor::new(Vec::new());
         PacketAssembly::write_packet(&mut buffer, data).unwrap();
+        buffer.rewind().unwrap();
         let assembled_data = PacketAssembly::new(1024)
             .receive_packet(&mut buffer)
             .unwrap();
