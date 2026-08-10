@@ -16,7 +16,6 @@ pub enum Error {
 
 pub trait Encryption {
     type SecretLength;
-    type NonceLength;
 
     fn initialize(shared_secret: Array<u8, Self::SecretLength>) -> Result<Box<Self>, Error>
     where
