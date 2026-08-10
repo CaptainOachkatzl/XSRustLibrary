@@ -122,4 +122,29 @@ mod tests {
             assert_eq!(packet_content, &[i as u8; PACKET_SIZE]);
         }
     }
+
+    #[test]
+    fn assemble_different_sizes() {
+        let mut rng = fastrand::Rng::with_seed(0);
+        let mut buffer = Cursor::new(Vec::new());
+
+        const PACKET_COUNT: usize = 10;
+
+        let mut packet_sizes = Vec::new();
+
+        for i in 0..PACKET_COUNT {
+            let packet_size = rng.usize(50..100);
+            packet_sizes.push(packet_size);
+            let packet_content = vec![i as u8; packet_size];
+            PacketAssembly::write_packet(&mut buffer, &packet_content).unwrap();
+        }
+
+        buffer.rewind().unwrap();
+
+        let mut packet_assembly = PacketAssembly::new(64);
+        for i in 0..PACKET_COUNT {
+            let packet_content = packet_assembly.receive_packet(&mut buffer).unwrap();
+            assert_eq!(packet_content, vec![i as u8; packet_sizes[i]]);
+        }
+    }
 }

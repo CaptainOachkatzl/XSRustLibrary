@@ -15,6 +15,7 @@ generic-array = "0.14.7"
 
 [dev-dependencies]
 bytesize = "*"
+fastrand = "*"
 
 [lib]
 doctest = false

@@ -39,8 +39,7 @@ impl PacketBuffer {
         let remaining_space = self.remaining_space();
         if data.remaining() > remaining_space {
             // since too much data is availabe for the current packet, fill it up and keep unused data in the buffer
-            self.buffer
-                .clone_from_slice(data.read_slice(remaining_space));
+            self.buffer[self.current_pos..].clone_from_slice(data.read_slice(remaining_space));
         } else {
             // all the data fits in the current packet
             let remaining_data = data.read_slice_to_end();
