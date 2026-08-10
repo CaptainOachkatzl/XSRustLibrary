@@ -1,7 +1,7 @@
 pub mod aes256_crypto;
 
+use aes_gcm::{aead::array::ArraySize, aes::cipher::Array};
 use displaydoc::Display;
-use generic_array::{ArrayLength, GenericArray};
 use thiserror::Error;
 
 #[derive(Debug, Display, Error)]
@@ -16,10 +16,11 @@ pub enum Error {
 
 pub trait Encryption {
     type SecretLength;
+    type NonceLength;
 
-    fn initialize(shared_secret: &GenericArray<u8, Self::SecretLength>) -> Result<Box<Self>, Error>
+    fn initialize(shared_secret: Array<u8, Self::SecretLength>) -> Result<Box<Self>, Error>
     where
-        Self::SecretLength: ArrayLength<u8>;
+        Self::SecretLength: ArraySize;
     fn encrypt(&mut self, data: &[u8]) -> Result<Vec<u8>, Error>;
     fn decrypt(&mut self, data: &[u8]) -> Result<Vec<u8>, Error>;
 }

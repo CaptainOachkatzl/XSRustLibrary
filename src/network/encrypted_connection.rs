@@ -1,7 +1,7 @@
 use std::fmt::Display;
 
+use aes_gcm::aead::array::ArraySize;
 use displaydoc::Display;
-use generic_array::ArrayLength;
 use thiserror::Error;
 
 use crate::{
@@ -51,10 +51,10 @@ where
         mode: HandshakeMode,
     ) -> Result<Self, HandshakeError>
     where
-        N: ArrayLength<u8>,
+        N: ArraySize,
     {
         let secret = kex.handshake(&mut connection, mode)?;
-        let crypto = Enc::initialize(&secret)?;
+        let crypto = Enc::initialize(secret)?;
 
         Ok(Self {
             connection,

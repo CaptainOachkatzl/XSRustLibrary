@@ -1,6 +1,6 @@
 use std::fmt::Display;
 
-use generic_array::{GenericArray, typenum::U32};
+use aes_gcm::{aead::consts::U32, aes::cipher::Array};
 use x25519_dalek::{EphemeralSecret, PublicKey};
 
 use crate::connection::Connection;
@@ -18,7 +18,7 @@ impl KeyExchange for Curve25519 {
         &mut self,
         connection: &mut impl Connection<ErrorType = E>,
         _mode: super::HandshakeMode,
-    ) -> Result<GenericArray<u8, U32>, Error> {
+    ) -> Result<Array<u8, Self::SecretLength>, Error> {
         let private_key = EphemeralSecret::random();
         let public_key = PublicKey::from(&private_key);
 
@@ -40,7 +40,7 @@ impl KeyExchange for Curve25519 {
         };
 
         // calculate shared secret
-        Ok(GenericArray::from(
+        Ok(Array::from(
             private_key
                 .diffie_hellman(&PublicKey::from(remote_pub_key))
                 .to_bytes(),

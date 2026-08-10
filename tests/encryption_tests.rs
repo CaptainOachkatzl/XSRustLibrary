@@ -3,7 +3,7 @@ use xs_rust_library::cryptography::encryption::{Encryption, aes256_crypto::Aes25
 #[test]
 fn aes_256_crypto() {
     let secret = [1_u8; 32];
-    let mut crypto = Aes256Crypto::new(&secret.into());
+    let mut crypto = Aes256Crypto::new(secret.into());
 
     let data = [0, 1, 2, 3];
     let encrypted = crypto.encrypt(&data).unwrap();
