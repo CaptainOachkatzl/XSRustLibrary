@@ -11,6 +11,7 @@ use super::Encryption;
 
 pub const NONCE_SIZE: usize = 12;
 
+#[derive(Clone)]
 pub struct Aes256Crypto {
     crypto: Aes256Gcm,
 }

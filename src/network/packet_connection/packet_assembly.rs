@@ -46,6 +46,10 @@ impl PacketAssembly {
         self.assemble_section(data, header.packet_size())
     }
 
+    pub fn buffer_size(&self) -> usize {
+        self.buffer.buffer_size()
+    }
+
     fn assemble_header(&mut self, data: &mut impl Read) -> Result<Header, Error> {
         let header_data = self.assemble_section(data, HEADER_SIZE)?;
         Header::read(&mut Cursor::new(header_data))

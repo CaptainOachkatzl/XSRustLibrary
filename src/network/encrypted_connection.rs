@@ -71,7 +71,7 @@ where
 
 impl<Enc, Con, E> Connection for EncryptedConnection<Enc, Con>
 where
-    Enc: Encryption,
+    Enc: Encryption + Clone,
     Con: Connection<ErrorType = E>,
     E: Display,
 {
@@ -97,5 +97,26 @@ where
         self.crypto
             .decrypt(&packet)
             .map_err(TransmissionError::DecryptMessage)
+    }
+
+    fn shutdown(&self, how: std::net::Shutdown) -> Result<(), Self::ErrorType> {
+        self.connection
+            .shutdown(how)
+            .map_err(|err| TransmissionError::Connection(err.to_string()))
+    }
+
+    fn try_clone(&self) -> Result<Self, Self::ErrorType>
+    where
+        Self: Sized,
+    {
+        let connection = self
+            .connection
+            .try_clone()
+            .map_err(|err| TransmissionError::Connection(err.to_string()))?;
+
+        Ok(Self {
+            connection,
+            crypto: self.crypto.clone(),
+        })
     }
 }

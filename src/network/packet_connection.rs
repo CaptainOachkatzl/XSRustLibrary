@@ -34,12 +34,6 @@ impl PacketConnection {
         }
     }
 
-    /// shuts the connection down.
-    pub fn shutdown(&self, how: Shutdown) -> Result<(), Error> {
-        self.tcp_stream.shutdown(how)?;
-        Ok(())
-    }
-
     /// get the underlying tcp stream.
     pub fn tcp_stream(&self) -> &TcpStream {
         &self.tcp_stream
@@ -64,5 +58,19 @@ impl Connection for PacketConnection {
                 Err(Error::PacketAssembly(e))
             }
         }
+    }
+
+    fn shutdown(&self, how: Shutdown) -> Result<(), Self::ErrorType> {
+        self.tcp_stream.shutdown(how)?;
+        Ok(())
+    }
+
+    fn try_clone(&self) -> Result<Self, Self::ErrorType>
+    where
+        Self: Sized,
+    {
+        let tcp_stream = self.tcp_stream.try_clone()?;
+
+        Ok(Self::new(tcp_stream, self.packet_assembler.buffer_size()))
     }
 }

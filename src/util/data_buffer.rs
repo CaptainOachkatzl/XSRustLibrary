@@ -58,6 +58,10 @@ impl DataBuffer {
         &self.buffer[start..self.end_pos]
     }
 
+    pub fn buffer_size(&self) -> usize {
+        self.buffer.len()
+    }
+
     pub fn is_empty(&self) -> bool {
         self.remaining() == 0
     }

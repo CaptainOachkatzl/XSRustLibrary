@@ -30,6 +30,17 @@ impl Connection for ChannelConnection {
     fn receive(&mut self) -> Result<Vec<u8>, String> {
         Ok(self.receiver.recv().unwrap().into_vec())
     }
+
+    fn shutdown(&self, how: std::net::Shutdown) -> Result<(), Self::ErrorType> {
+        unimplemented!();
+    }
+
+    fn try_clone(&self) -> Result<Self, Self::ErrorType>
+    where
+        Self: Sized,
+    {
+        unimplemented!();
+    }
 }
 
 impl ChannelConnection {
@@ -62,6 +73,17 @@ impl Connection for FaultyConnection {
 
     fn receive(&mut self) -> Result<Vec<u8>, String> {
         Ok(Vec::new())
+    }
+
+    fn shutdown(&self, how: std::net::Shutdown) -> Result<(), Self::ErrorType> {
+        unimplemented!();
+    }
+
+    fn try_clone(&self) -> Result<Self, Self::ErrorType>
+    where
+        Self: Sized,
+    {
+        unimplemented!();
     }
 }
 
