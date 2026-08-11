@@ -28,24 +28,17 @@ impl Aes256Crypto {
 impl Encryption for Aes256Crypto {
     type SecretLength = U32;
 
-    fn encrypt_into(&mut self, data: &[u8], output: &mut Vec<u8>) -> Result<(), super::Error> {
+    fn encrypt_in_place(&mut self, data: &mut Vec<u8>) -> Result<(), super::Error> {
         let mut nonce: Array<u8, U12> = unsafe { Array::uninit().assume_init() };
         rand::fill(&mut nonce);
 
-        // output = [plaintext]
-        output.clear();
-        output.extend_from_slice(data);
-
-        // output = [ciphertext][tag]
         self.crypto
-            .encrypt_in_place(&nonce, b"", output)
+            .encrypt_in_place(&nonce, b"", data)
             .map_err(|e| super::Error::Encryption(e.to_string()))?;
 
-        // output = [nonce][ciphertext][tag]
-        let ciphertext_len = output.len();
-        output.resize(ciphertext_len + NONCE_SIZE, 0);
-        output.copy_within(0..ciphertext_len, NONCE_SIZE);
-        output[..NONCE_SIZE].copy_from_slice(&nonce);
+        // data = [ciphertext][tag], append [nonce]
+        data.extend(nonce);
+
         Ok(())
     }
 
@@ -56,13 +49,12 @@ impl Encryption for Aes256Crypto {
             ));
         }
 
-        let nonce = Nonce::try_from(&data[..NONCE_SIZE])
+        // data = [ciphertext][tag][nonce]
+        let nonce = Nonce::try_from(&data[data.len() - NONCE_SIZE..data.len()])
             .map_err(|err| super::Error::Encryption(format!("Nonce decoding error: {}.", err)))?;
 
         // data = [ciphertext][tag]
-        let ciphertext_len = data.len() - NONCE_SIZE;
-        data.copy_within(NONCE_SIZE.., 0);
-        data.truncate(ciphertext_len);
+        data.truncate(data.len() - NONCE_SIZE);
 
         // data = [plaintext]
         self.crypto

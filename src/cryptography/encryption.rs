@@ -21,11 +21,29 @@ pub trait Encryption {
     where
         Self::SecretLength: ArraySize;
 
-    /// encrypt data and write the result into the provided buffer, reusing its allocation.
-    fn encrypt_into(&mut self, data: &[u8], output: &mut Vec<u8>) -> Result<(), Error>;
+    /// encrypt data and return the result as a new buffer.
+    fn encrypt(&mut self, data: &[u8]) -> Result<Vec<u8>, Error> {
+        let mut output = Vec::new();
+        self.encrypt_into(data, &mut output)?;
+        Ok(output)
+    }
 
-    /// decrypt data in place, reusing the buffer's allocation.
-    fn decrypt_in_place(&mut self, data: &mut Vec<u8>) -> Result<(), Error>;
+    /// encrypt data and write the result into the provided buffer, reusing its allocation.
+    fn encrypt_into(&mut self, data: &[u8], output: &mut Vec<u8>) -> Result<(), Error> {
+        output.clear();
+        output.extend_from_slice(data);
+        self.encrypt_in_place(output)
+    }
+
+    /// encrypt data in place, reusing the buffer's allocation.
+    fn encrypt_in_place(&mut self, data: &mut Vec<u8>) -> Result<(), Error>;
+
+    /// decrypt data and return the result as a new buffer.
+    fn decrypt(&mut self, data: &[u8]) -> Result<Vec<u8>, Error> {
+        let mut output = Vec::new();
+        self.decrypt_into(data, &mut output)?;
+        Ok(output)
+    }
 
     /// decrypt data and write the result into the provided buffer, reusing its allocation.
     fn decrypt_into(&mut self, data: &[u8], output: &mut Vec<u8>) -> Result<(), Error> {
@@ -34,17 +52,6 @@ pub trait Encryption {
         self.decrypt_in_place(output)
     }
 
-    /// encrypt data and return the result as a new buffer.
-    fn encrypt(&mut self, data: &[u8]) -> Result<Vec<u8>, Error> {
-        let mut output = Vec::new();
-        self.encrypt_into(data, &mut output)?;
-        Ok(output)
-    }
-
-    /// decrypt data and return the result as a new buffer.
-    fn decrypt(&mut self, data: &[u8]) -> Result<Vec<u8>, Error> {
-        let mut output = Vec::new();
-        self.decrypt_into(data, &mut output)?;
-        Ok(output)
-    }
+    /// decrypt data in place, reusing the buffer's allocation.
+    fn decrypt_in_place(&mut self, data: &mut Vec<u8>) -> Result<(), Error>;
 }
