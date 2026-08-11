@@ -1,88 +1,55 @@
 use std::{
-    cell::RefCell,
-    net::Shutdown,
-    sync::atomic::{AtomicBool, Ordering},
+    error::Error,
+    sync::{
+        Arc,
+        atomic::{AtomicBool, Ordering},
+    },
 };
-
-use displaydoc::Display;
-use thiserror::Error;
 
 use crate::{
     connection::Connection,
     events::{Invokable, Subscribable, event::Event, subscription::Subscription},
-    packet_connection,
 };
-
-use super::PacketConnection;
 
 type EventHandler = dyn Fn(&Vec<u8>) + Send + Sync;
 
-#[derive(Debug, Display, Error)]
-pub enum Error {
-    /// {0}
-    PacketConnection(#[from] packet_connection::Error),
+pub struct PacketReceiveEvent<T: Connection<ErrorType = E>, E: Error> {
+    connection: T,
+    receive_event: Event<Vec<u8>>,
+    receive_buffer: Vec<u8>,
+    started: bool,
+    stop: Arc<AtomicBool>,
 }
 
-pub struct PacketReceiveEvent {
-    packet_connection: RefCell<PacketConnection>,
-    receive_event: RefCell<Event<Vec<u8>>>,
-    receive_buffer: RefCell<Vec<u8>>,
-    started: AtomicBool,
-    stop: AtomicBool,
-}
+impl<T: Connection<ErrorType = E>, E: Error> PacketReceiveEvent<T, E> {
+    pub fn new(connection: T) -> (Self, Arc<AtomicBool>) {
+        let stop = Arc::new(AtomicBool::new(false));
+        let event = Self {
+            connection: connection,
+            receive_event: Event::new(),
+            receive_buffer: Vec::new(),
+            started: false,
+            stop: stop.clone(),
+        };
 
-impl PacketReceiveEvent {
-    pub fn new(packet_connection: PacketConnection) -> PacketReceiveEvent {
-        PacketReceiveEvent {
-            packet_connection: RefCell::new(packet_connection),
-            receive_event: RefCell::new(Event::new()),
-            receive_buffer: RefCell::new(Vec::new()),
-            started: AtomicBool::new(false),
-            stop: AtomicBool::new(false),
-        }
+        (event, stop)
     }
 
-    pub fn start(&self) {
-        // guarantee only one thread can ever pass through and execute loop
-        if !self.locked_start_check() {
+    pub fn start(&mut self) {
+        if self.started {
             return;
         }
 
-        while !self.stop.load(Ordering::SeqCst) {
-            let mut buffer = self.receive_buffer.borrow_mut();
-            let receive_result = self.packet_connection.borrow_mut().receive_into(&mut buffer);
+        while !self.stop.load(Ordering::Relaxed) {
+            let receive_result = self.connection.receive_into(&mut self.receive_buffer);
             match receive_result {
-                Ok(_) => self.receive_event.borrow_mut().invoke(&buffer),
-                Err(_) => self.stop().unwrap(),
+                Ok(_) => self.receive_event.invoke(&self.receive_buffer),
+                Err(_) => return,
             }
         }
     }
 
-    fn locked_start_check(&self) -> bool {
-        self.set_atomic_bool(&self.started)
-    }
-
-    fn locked_stop_check(&self) -> bool {
-        self.set_atomic_bool(&self.stop)
-    }
-
-    // returns true if the bool was set to true
-    fn set_atomic_bool(&self, value: &AtomicBool) -> bool {
-        value
-            .compare_exchange(false, true, Ordering::SeqCst, Ordering::SeqCst)
-            .is_ok()
-    }
-
-    pub fn stop(&self) -> Result<(), Error> {
-        if !self.locked_stop_check() {
-            return Ok(());
-        }
-
-        self.packet_connection.borrow().shutdown(Shutdown::Both)?;
-        Ok(())
-    }
-
     pub fn subscribe(&mut self, subscriber: Box<EventHandler>) -> Subscription<Vec<u8>> {
-        self.receive_event.borrow_mut().subscribe(subscriber)
+        self.receive_event.subscribe(subscriber)
     }
 }

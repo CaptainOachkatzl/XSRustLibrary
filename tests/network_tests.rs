@@ -106,7 +106,7 @@ mod network_tests {
             });
 
             let connection = PacketConnection::new(stream);
-            let mut event = PacketReceiveEvent::new(connection);
+            let mut event = PacketReceiveEvent::new(connection).0;
 
             let _sub = event.subscribe(receive_callback);
             event.start();
