@@ -35,6 +35,7 @@ pub enum TransmissionError {
 pub struct EncryptedConnection<Enc, Con> {
     crypto: Enc,
     connection: Con,
+    send_buffer: Vec<u8>,
 }
 
 impl<Enc, Con, N> EncryptedConnection<Enc, Con>
@@ -59,6 +60,7 @@ where
         Ok(Self {
             connection,
             crypto: *crypto,
+            send_buffer: Vec::new(),
         })
     }
 
@@ -79,24 +81,23 @@ where
 
     /// send data that will be encrypted with the crypto module.
     fn send(&mut self, data: &[u8]) -> Result<(), TransmissionError> {
-        let encrypted = self
-            .crypto
-            .encrypt(data)
+        self.crypto
+            .encrypt_into(data, &mut self.send_buffer)
             .map_err(TransmissionError::EncryptMessage)?;
         self.connection
-            .send(&encrypted)
+            .send(&self.send_buffer)
             .map_err(|e| TransmissionError::Connection(e.to_string()))
     }
 
-    /// receive data and decrypt it with the crypto module.
-    fn receive(&mut self) -> Result<Vec<u8>, TransmissionError> {
-        let packet = self
-            .connection
-            .receive()
+    /// receive data and decrypt it directly into the provided buffer, reusing its allocation.
+    fn receive_into(&mut self, buffer: &mut Vec<u8>) -> Result<usize, TransmissionError> {
+        self.connection
+            .receive_into(buffer)
             .map_err(|e| TransmissionError::Connection(e.to_string()))?;
         self.crypto
-            .decrypt(&packet)
-            .map_err(TransmissionError::DecryptMessage)
+            .decrypt_in_place(buffer)
+            .map_err(TransmissionError::DecryptMessage)?;
+        Ok(buffer.len())
     }
 
     fn shutdown(&self, how: std::net::Shutdown) -> Result<(), Self::ErrorType> {
@@ -117,6 +118,7 @@ where
         Ok(Self {
             connection,
             crypto: self.crypto.clone(),
+            send_buffer: Vec::new(),
         })
     }
 }

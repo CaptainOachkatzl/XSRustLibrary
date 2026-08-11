@@ -3,17 +3,14 @@ use crate::{
     packet_connection::header::{HEADER_SIZE, Header},
 };
 
-use super::packet_buffer::{PacketBuffer, PacketState};
 use displaydoc::Display;
-use std::io::{Cursor, Read, Write};
+use std::io::{Read, Write};
 use thiserror::Error;
 
 #[derive(Debug, Display, Error)]
 pub enum Error {
     /// Remote sent FIN signal before packet assembly was complete
     ReceivedFin,
-    /// Invalid packet data
-    InvalidData,
     /// IO error while trying to receive data: {0}
     Receive(#[from] std::io::Error),
 }
@@ -42,32 +39,52 @@ impl PacketAssembly {
     }
 
     pub fn receive_packet(&mut self, data: &mut impl Read) -> Result<Vec<u8>, Error> {
-        let header = self.assemble_header(data)?;
-        self.assemble_section(data, header.packet_size())
+        let mut output = Vec::new();
+        self.receive_packet_into(data, &mut output)?;
+        Ok(output)
+    }
+
+    /// receive a packet and write its content directly into the provided buffer,
+    /// reusing the buffer's allocation.
+    pub fn receive_packet_into(
+        &mut self,
+        data: &mut impl Read,
+        output: &mut Vec<u8>,
+    ) -> Result<usize, Error> {
+        let mut header_data = [0_u8; HEADER_SIZE];
+        self.assemble_section_into(data, &mut header_data)?;
+        let header = Header::from_slice(header_data);
+        let packet_size = header.packet_size();
+
+        output.clear();
+        output.resize(packet_size, 0);
+        self.assemble_section_into(data, output)?;
+
+        Ok(packet_size)
     }
 
     pub fn buffer_size(&self) -> usize {
         self.buffer.buffer_size()
     }
 
-    fn assemble_header(&mut self, data: &mut impl Read) -> Result<Header, Error> {
-        let header_data = self.assemble_section(data, HEADER_SIZE)?;
-        Header::read(&mut Cursor::new(header_data))
-    }
-
-    /// pull data from stream until there is enough data for the section available
-    fn assemble_section(
+    /// pull data from the stream until the provided section is completely filled.
+    fn assemble_section_into(
         &mut self,
         data: &mut impl Read,
-        section_size: usize,
-    ) -> Result<Vec<u8>, Error> {
-        let mut section_data = PacketBuffer::new(section_size);
-
-        while section_data.fill(&mut self.buffer) == PacketState::RequiresData {
-            self.receive_next_chunk(data)?;
+        output: &mut [u8],
+    ) -> Result<(), Error> {
+        let mut filled = 0;
+        while filled < output.len() {
+            let available = self.buffer.remaining();
+            if available > 0 {
+                let to_copy = available.min(output.len() - filled);
+                output[filled..filled + to_copy].copy_from_slice(self.buffer.read_slice(to_copy));
+                filled += to_copy;
+            } else {
+                self.receive_next_chunk(data)?;
+            }
         }
-
-        Ok(section_data.into_vec())
+        Ok(())
     }
 
     fn receive_next_chunk(&mut self, data: &mut impl Read) -> Result<(), Error> {
@@ -150,5 +167,21 @@ mod tests {
             let packet_content = packet_assembly.receive_packet(&mut buffer).unwrap();
             assert_eq!(packet_content, vec![i as u8; packet_sizes[i]]);
         }
+    }
+
+    #[test]
+    fn receive_packet_into_reuses_buffer() {
+        let data = b"hello world";
+        let mut buffer = Cursor::new(Vec::new());
+        PacketAssembly::write_packet(&mut buffer, data).unwrap();
+        buffer.rewind().unwrap();
+
+        let mut packet_assembly = PacketAssembly::new(4);
+        let mut output = vec![0_u8; 1024]; // pre-allocated buffer
+        let size = packet_assembly
+            .receive_packet_into(&mut buffer, &mut output)
+            .unwrap();
+        assert_eq!(size, data.len());
+        assert_eq!(&output[..size], data);
     }
 }

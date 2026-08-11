@@ -27,8 +27,10 @@ impl Connection for ChannelConnection {
         Ok(self.sender.send(Box::from(data)).unwrap())
     }
 
-    fn receive(&mut self) -> Result<Vec<u8>, String> {
-        Ok(self.receiver.recv().unwrap().into_vec())
+    fn receive_into(&mut self, buffer: &mut Vec<u8>) -> Result<usize, Self::ErrorType> {
+        buffer.clear();
+        buffer.extend(self.receiver.recv().unwrap());
+        Ok(buffer.len())
     }
 
     fn shutdown(&self, how: std::net::Shutdown) -> Result<(), Self::ErrorType> {
@@ -71,8 +73,9 @@ impl Connection for FaultyConnection {
         Ok(())
     }
 
-    fn receive(&mut self) -> Result<Vec<u8>, String> {
-        Ok(Vec::new())
+    fn receive_into(&mut self, buffer: &mut Vec<u8>) -> Result<usize, Self::ErrorType> {
+        buffer.clear();
+        Ok(0)
     }
 
     fn shutdown(&self, how: std::net::Shutdown) -> Result<(), Self::ErrorType> {

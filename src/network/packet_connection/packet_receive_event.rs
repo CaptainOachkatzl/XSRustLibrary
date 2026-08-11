@@ -26,6 +26,7 @@ pub enum Error {
 pub struct PacketReceiveEvent {
     packet_connection: RefCell<PacketConnection>,
     receive_event: RefCell<Event<Vec<u8>>>,
+    receive_buffer: RefCell<Vec<u8>>,
     started: AtomicBool,
     stop: AtomicBool,
 }
@@ -35,6 +36,7 @@ impl PacketReceiveEvent {
         PacketReceiveEvent {
             packet_connection: RefCell::new(packet_connection),
             receive_event: RefCell::new(Event::new()),
+            receive_buffer: RefCell::new(Vec::new()),
             started: AtomicBool::new(false),
             stop: AtomicBool::new(false),
         }
@@ -47,11 +49,12 @@ impl PacketReceiveEvent {
         }
 
         while !self.stop.load(Ordering::SeqCst) {
-            let receive_result = self.packet_connection.borrow_mut().receive();
+            let mut buffer = self.receive_buffer.borrow_mut();
+            let receive_result = self.packet_connection.borrow_mut().receive_into(&mut buffer);
             match receive_result {
-                Ok(v) => self.receive_event.borrow_mut().invoke(&v),
-                _ => self.stop().unwrap(),
-            };
+                Ok(_) => self.receive_event.borrow_mut().invoke(&buffer),
+                Err(_) => self.stop().unwrap(),
+            }
         }
     }
 

@@ -1,6 +1,5 @@
 mod header;
 mod packet_assembly;
-mod packet_buffer;
 pub mod packet_receive_event;
 
 use std::net::{Shutdown, TcpStream};
@@ -53,6 +52,19 @@ impl Connection for PacketConnection {
     fn receive(&mut self) -> Result<Vec<u8>, Error> {
         match self.packet_assembler.receive_packet(&mut self.tcp_stream) {
             Ok(v) => Ok(v),
+            Err(e) => {
+                self.tcp_stream.shutdown(Shutdown::Both)?;
+                Err(Error::PacketAssembly(e))
+            }
+        }
+    }
+
+    fn receive_into(&mut self, buffer: &mut Vec<u8>) -> Result<usize, Error> {
+        match self
+            .packet_assembler
+            .receive_packet_into(&mut self.tcp_stream, buffer)
+        {
+            Ok(size) => Ok(size),
             Err(e) => {
                 self.tcp_stream.shutdown(Shutdown::Both)?;
                 Err(Error::PacketAssembly(e))

@@ -1,7 +1,7 @@
 use aes_gcm::{
     Aes256Gcm, Key, KeyInit, Nonce,
     aead::{
-        Aead,
+        AeadInOut,
         consts::{U12, U32},
     },
     aes::cipher::Array,
@@ -10,6 +10,7 @@ use aes_gcm::{
 use super::Encryption;
 
 pub const NONCE_SIZE: usize = 12;
+pub const TAG_SIZE: usize = 16;
 
 #[derive(Clone)]
 pub struct Aes256Crypto {
@@ -27,36 +28,48 @@ impl Aes256Crypto {
 impl Encryption for Aes256Crypto {
     type SecretLength = U32;
 
-    fn encrypt(&mut self, data: &[u8]) -> Result<Vec<u8>, super::Error> {
+    fn encrypt_into(&mut self, data: &[u8], output: &mut Vec<u8>) -> Result<(), super::Error> {
         let mut nonce: Array<u8, U12> = unsafe { Array::uninit().assume_init() };
         rand::fill(&mut nonce);
-        let mut encrypted = match self.crypto.encrypt(&nonce, data) {
-            Ok(v) => v,
-            Err(e) => return Err(super::Error::Encryption(e.to_string())),
-        };
 
-        // append nonce on the back to avoid moving/copying a lot of memory
-        encrypted.extend_from_slice(&nonce);
+        // output = [plaintext]
+        output.clear();
+        output.extend_from_slice(data);
 
-        Ok(encrypted)
+        // output = [ciphertext][tag]
+        self.crypto
+            .encrypt_in_place(&nonce, b"", output)
+            .map_err(|e| super::Error::Encryption(e.to_string()))?;
+
+        // output = [nonce][ciphertext][tag]
+        let ciphertext_len = output.len();
+        output.resize(ciphertext_len + NONCE_SIZE, 0);
+        output.copy_within(0..ciphertext_len, NONCE_SIZE);
+        output[..NONCE_SIZE].copy_from_slice(&nonce);
+        Ok(())
     }
 
-    fn decrypt(&mut self, data: &[u8]) -> Result<Vec<u8>, super::Error> {
-        if data.len() < NONCE_SIZE {
+    fn decrypt_in_place(&mut self, data: &mut Vec<u8>) -> Result<(), super::Error> {
+        if data.len() < NONCE_SIZE + TAG_SIZE {
             return Err(super::Error::Encryption(
-                "Encrypted message does not contain nonce.".to_string(),
+                "Encrypted message does not contain nonce and tag.".to_string(),
             ));
         }
 
-        let nonce_start = data.len() - NONCE_SIZE;
-        let nonce = Nonce::try_from(&data[nonce_start..])
+        let nonce = Nonce::try_from(&data[..NONCE_SIZE])
             .map_err(|err| super::Error::Encryption(format!("Nonce decoding error: {}.", err)))?;
-        let decrypted = match self.crypto.decrypt(&nonce, &data[..nonce_start]) {
-            Ok(v) => v,
-            Err(e) => return Err(super::Error::Encryption(e.to_string())),
-        };
 
-        Ok(decrypted)
+        // data = [ciphertext][tag]
+        let ciphertext_len = data.len() - NONCE_SIZE;
+        data.copy_within(NONCE_SIZE.., 0);
+        data.truncate(ciphertext_len);
+
+        // data = [plaintext]
+        self.crypto
+            .decrypt_in_place(&nonce, b"", data)
+            .map_err(|e| super::Error::Encryption(e.to_string()))?;
+
+        Ok(())
     }
 
     fn initialize(
