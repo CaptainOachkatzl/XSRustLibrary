@@ -1,6 +1,5 @@
 mod header;
 mod packet_assembly;
-mod packet_buffer;
 pub mod packet_receive_event;
 
 use std::net::{Shutdown, TcpStream};
@@ -27,10 +26,17 @@ pub struct PacketConnection {
 }
 
 impl PacketConnection {
-    pub fn new(tcp_stream: TcpStream, receive_buffer_size: usize) -> PacketConnection {
+    pub fn new(tcp_stream: TcpStream) -> PacketConnection {
         PacketConnection {
             tcp_stream,
-            packet_assembler: PacketAssembly::new(receive_buffer_size),
+            packet_assembler: PacketAssembly::new(),
+        }
+    }
+
+    pub fn with_max_packet_size(tcp_stream: TcpStream, max_packet_size: usize) -> PacketConnection {
+        PacketConnection {
+            tcp_stream,
+            packet_assembler: PacketAssembly::with_max_packet_size(max_packet_size),
         }
     }
 
@@ -60,6 +66,19 @@ impl Connection for PacketConnection {
         }
     }
 
+    fn receive_into(&mut self, buffer: &mut Vec<u8>) -> Result<usize, Error> {
+        match self
+            .packet_assembler
+            .receive_packet_into(&mut self.tcp_stream, buffer)
+        {
+            Ok(size) => Ok(size),
+            Err(e) => {
+                self.tcp_stream.shutdown(Shutdown::Both)?;
+                Err(Error::PacketAssembly(e))
+            }
+        }
+    }
+
     fn shutdown(&self, how: Shutdown) -> Result<(), Self::ErrorType> {
         self.tcp_stream.shutdown(how)?;
         Ok(())
@@ -71,6 +90,9 @@ impl Connection for PacketConnection {
     {
         let tcp_stream = self.tcp_stream.try_clone()?;
 
-        Ok(Self::new(tcp_stream, self.packet_assembler.buffer_size()))
+        Ok(Self::with_max_packet_size(
+            tcp_stream,
+            self.packet_assembler.max_packet_size(),
+        ))
     }
 }

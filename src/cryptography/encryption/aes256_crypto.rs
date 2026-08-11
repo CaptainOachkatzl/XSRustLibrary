@@ -1,7 +1,7 @@
 use aes_gcm::{
     Aes256Gcm, Key, KeyInit, Nonce,
     aead::{
-        Aead,
+        AeadInOut,
         consts::{U12, U32},
     },
     aes::cipher::Array,
@@ -10,6 +10,7 @@ use aes_gcm::{
 use super::Encryption;
 
 pub const NONCE_SIZE: usize = 12;
+pub const TAG_SIZE: usize = 16;
 
 #[derive(Clone)]
 pub struct Aes256Crypto {
@@ -27,36 +28,40 @@ impl Aes256Crypto {
 impl Encryption for Aes256Crypto {
     type SecretLength = U32;
 
-    fn encrypt(&mut self, data: &[u8]) -> Result<Vec<u8>, super::Error> {
+    fn encrypt_in_place(&mut self, data: &mut Vec<u8>) -> Result<(), super::Error> {
         let mut nonce: Array<u8, U12> = unsafe { Array::uninit().assume_init() };
         rand::fill(&mut nonce);
-        let mut encrypted = match self.crypto.encrypt(&nonce, data) {
-            Ok(v) => v,
-            Err(e) => return Err(super::Error::Encryption(e.to_string())),
-        };
 
-        // append nonce on the back to avoid moving/copying a lot of memory
-        encrypted.extend_from_slice(&nonce);
+        self.crypto
+            .encrypt_in_place(&nonce, b"", data)
+            .map_err(|e| super::Error::Encryption(e.to_string()))?;
 
-        Ok(encrypted)
+        // data = [ciphertext][tag], append [nonce]
+        data.extend(nonce);
+
+        Ok(())
     }
 
-    fn decrypt(&mut self, data: &[u8]) -> Result<Vec<u8>, super::Error> {
-        if data.len() < NONCE_SIZE {
+    fn decrypt_in_place(&mut self, data: &mut Vec<u8>) -> Result<(), super::Error> {
+        if data.len() < NONCE_SIZE + TAG_SIZE {
             return Err(super::Error::Encryption(
-                "Encrypted message does not contain nonce.".to_string(),
+                "Encrypted message does not contain nonce and tag.".to_string(),
             ));
         }
 
-        let nonce_start = data.len() - NONCE_SIZE;
-        let nonce = Nonce::try_from(&data[nonce_start..])
+        // data = [ciphertext][tag][nonce]
+        let nonce = Nonce::try_from(&data[data.len() - NONCE_SIZE..data.len()])
             .map_err(|err| super::Error::Encryption(format!("Nonce decoding error: {}.", err)))?;
-        let decrypted = match self.crypto.decrypt(&nonce, &data[..nonce_start]) {
-            Ok(v) => v,
-            Err(e) => return Err(super::Error::Encryption(e.to_string())),
-        };
 
-        Ok(decrypted)
+        // data = [ciphertext][tag]
+        data.truncate(data.len() - NONCE_SIZE);
+
+        // data = [plaintext]
+        self.crypto
+            .decrypt_in_place(&nonce, b"", data)
+            .map_err(|e| super::Error::Encryption(e.to_string()))?;
+
+        Ok(())
     }
 
     fn initialize(

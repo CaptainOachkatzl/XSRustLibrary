@@ -1,6 +1,4 @@
-use std::io::{Read, Write};
-
-use crate::packet_connection::packet_assembly;
+use std::io::Write;
 
 pub const HEADER_SIZE: usize = 8;
 
@@ -24,15 +22,6 @@ impl Header {
 
     pub fn write(&self, writer: &mut impl Write) -> Result<(), std::io::Error> {
         writer.write_all(&(self.packet_size as u64).to_le_bytes())
-    }
-
-    pub fn read(reader: &mut impl Read) -> Result<Self, packet_assembly::Error> {
-        let mut buffer = [0; HEADER_SIZE];
-        let header_data_size = reader.read(&mut buffer)?;
-        if header_data_size != HEADER_SIZE {
-            return Err(packet_assembly::Error::InvalidData);
-        }
-        Ok(Self::from_slice(buffer))
     }
 
     pub fn packet_size(&self) -> usize {

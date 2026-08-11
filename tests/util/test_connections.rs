@@ -27,8 +27,10 @@ impl Connection for ChannelConnection {
         Ok(self.sender.send(Box::from(data)).unwrap())
     }
 
-    fn receive(&mut self) -> Result<Vec<u8>, String> {
-        Ok(self.receiver.recv().unwrap().into_vec())
+    fn receive_into(&mut self, buffer: &mut Vec<u8>) -> Result<usize, Self::ErrorType> {
+        buffer.clear();
+        buffer.extend(self.receiver.recv().unwrap());
+        Ok(buffer.len())
     }
 
     fn shutdown(&self, how: std::net::Shutdown) -> Result<(), Self::ErrorType> {
@@ -71,8 +73,9 @@ impl Connection for FaultyConnection {
         Ok(())
     }
 
-    fn receive(&mut self) -> Result<Vec<u8>, String> {
-        Ok(Vec::new())
+    fn receive_into(&mut self, buffer: &mut Vec<u8>) -> Result<usize, Self::ErrorType> {
+        buffer.clear();
+        Ok(0)
     }
 
     fn shutdown(&self, how: std::net::Shutdown) -> Result<(), Self::ErrorType> {
@@ -92,11 +95,11 @@ pub fn new_packet_connection_test_pair() -> (PacketConnection, PacketConnection)
 
     let join_handle = thread::spawn(move || {
         let remote_stream = TcpStream::connect("127.0.0.1:1234").unwrap();
-        PacketConnection::new(remote_stream, 1024)
+        PacketConnection::new(remote_stream)
     });
 
     let (local_stream, _) = listener.accept().unwrap();
-    let local_con = PacketConnection::new(local_stream, 1024);
+    let local_con = PacketConnection::new(local_stream);
 
     let remote_con = join_handle.join().unwrap();
     (local_con, remote_con)
