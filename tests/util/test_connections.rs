@@ -95,11 +95,11 @@ pub fn new_packet_connection_test_pair() -> (PacketConnection, PacketConnection)
 
     let join_handle = thread::spawn(move || {
         let remote_stream = TcpStream::connect("127.0.0.1:1234").unwrap();
-        PacketConnection::new(remote_stream, 1024)
+        PacketConnection::new(remote_stream)
     });
 
     let (local_stream, _) = listener.accept().unwrap();
-    let local_con = PacketConnection::new(local_stream, 1024);
+    let local_con = PacketConnection::new(local_stream);
 
     let remote_con = join_handle.join().unwrap();
     (local_con, remote_con)

@@ -46,7 +46,7 @@ mod network_tests {
         listening.wait();
 
         let accept_stream: TcpStream = listener.accept().unwrap().0;
-        let mut accept_connection = PacketConnection::new(accept_stream, 1024);
+        let mut accept_connection = PacketConnection::new(accept_stream);
         accept_connection.send(b"test123").unwrap();
         accept_connection.send(b"abc").unwrap();
         accept_connection
@@ -56,7 +56,7 @@ mod network_tests {
 
     fn connect_to_localhost() -> std::io::Result<()> {
         let stream = TcpStream::connect("127.0.0.1:1234")?;
-        let mut connection = PacketConnection::new(stream, 1024);
+        let mut connection = PacketConnection::new(stream);
         assert_eq!(connection.receive().unwrap().len(), 7);
         assert_eq!(connection.receive().unwrap().len(), 3);
         let big_data = connection.receive().unwrap();
@@ -79,7 +79,7 @@ mod network_tests {
     }
 
     fn dummy_send(stream: TcpStream) {
-        let mut packet_connection = PacketConnection::new(stream, 1024);
+        let mut packet_connection = PacketConnection::new(stream);
         packet_connection
             .send(&[0 as u8; 8])
             .expect("sending failed");
@@ -105,14 +105,14 @@ mod network_tests {
                 listening_barrier.wait();
             });
 
-            let connection = PacketConnection::new(stream, 1024);
+            let connection = PacketConnection::new(stream);
             let mut event = PacketReceiveEvent::new(connection);
 
             let _sub = event.subscribe(receive_callback);
             event.start();
         });
 
-        let mut accept_stream = PacketConnection::new(listener.accept().unwrap().0, 1024);
+        let mut accept_stream = PacketConnection::new(listener.accept().unwrap().0);
         accept_stream.send(&[0 as u8; 4]).unwrap();
 
         listening_barrier2.wait();
@@ -132,10 +132,10 @@ mod network_tests {
         let stream = TcpStream::connect("127.0.0.1:4567").unwrap();
         let stream2 = stream.try_clone().unwrap();
 
-        let connection = PacketConnection::new(stream, 1024);
+        let connection = PacketConnection::new(stream);
 
         let receive_thread = thread::spawn(move || {
-            let mut connection = PacketConnection::new(stream2, 1024);
+            let mut connection = PacketConnection::new(stream2);
             assert!(connection.receive().is_err());
         });
 
@@ -149,7 +149,7 @@ mod network_tests {
 
         let join_handle = thread::spawn(move || {
             let remote_stream = TcpStream::connect("127.0.0.1:5678").unwrap();
-            let remote_con = PacketConnection::new(remote_stream, 1024);
+            let remote_con = PacketConnection::new(remote_stream);
             let mut enc_con = EncryptedConnection::<Aes256Crypto, _>::with_handshake(
                 remote_con,
                 Curve25519,
@@ -160,7 +160,7 @@ mod network_tests {
         });
 
         let (local_stream, _) = listener.accept().unwrap();
-        let local_con = PacketConnection::new(local_stream, 1024);
+        let local_con = PacketConnection::new(local_stream);
         let mut enc_con = EncryptedConnection::<Aes256Crypto, _>::with_handshake(
             local_con,
             Curve25519,
@@ -179,7 +179,7 @@ mod network_tests {
 
         let join_handle = thread::spawn(move || {
             let remote_stream = TcpStream::connect("127.0.0.1:6789").unwrap();
-            let remote_con = PacketConnection::new(remote_stream, 1024);
+            let remote_con = PacketConnection::new(remote_stream);
             let mut enc_con = EncryptedConnection::<Aes256Crypto, _>::with_handshake(
                 remote_con,
                 Curve25519,
@@ -190,7 +190,7 @@ mod network_tests {
         });
 
         let (local_stream, _) = listener.accept().unwrap();
-        let local_con = PacketConnection::new(local_stream, 1024);
+        let local_con = PacketConnection::new(local_stream);
         let mut enc_con = EncryptedConnection::<Aes256Crypto, _>::with_handshake(
             local_con,
             Curve25519,
