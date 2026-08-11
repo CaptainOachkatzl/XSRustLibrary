@@ -57,7 +57,7 @@ impl PacketAssembly {
         buffer: &mut Vec<u8>,
     ) -> Result<usize, Error> {
         let mut header_data = [0_u8; HEADER_SIZE];
-        self.assemble_section_into(data, &mut header_data)?;
+        assemble_section_into(data, &mut header_data)?;
         let header = Header::from_slice(header_data);
         let packet_size = header.packet_size();
 
@@ -67,20 +67,16 @@ impl PacketAssembly {
 
         buffer.clear();
         buffer.resize(packet_size, 0);
-        self.assemble_section_into(data, buffer)?;
+        assemble_section_into(data, buffer)?;
 
         Ok(packet_size)
     }
+}
 
-    /// pull data from the stream until the provided section is completely filled.
-    fn assemble_section_into(
-        &mut self,
-        data: &mut impl Read,
-        buffer: &mut [u8],
-    ) -> Result<(), Error> {
-        data.read_exact(buffer)?;
-        Ok(())
-    }
+/// pull data from the stream until the provided section is completely filled.
+fn assemble_section_into(data: &mut impl Read, buffer: &mut [u8]) -> Result<(), Error> {
+    data.read_exact(buffer)?;
+    Ok(())
 }
 
 #[cfg(test)]
