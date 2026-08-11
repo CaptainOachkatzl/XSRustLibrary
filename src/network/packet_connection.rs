@@ -1,6 +1,5 @@
 mod header;
 mod packet_assembly;
-pub mod packet_receive_event;
 
 use std::net::{Shutdown, TcpStream};
 

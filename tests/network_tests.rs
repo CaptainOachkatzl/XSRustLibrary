@@ -3,7 +3,11 @@ mod util;
 
 #[cfg(test)]
 mod network_tests {
-    use std::{net::*, sync::*, thread};
+    use std::{
+        net::*,
+        sync::{atomic::AtomicBool, *},
+        thread,
+    };
 
     use xs_rust_library::{
         connection::Connection,
@@ -12,7 +16,8 @@ mod network_tests {
             key_exchange::{HandshakeMode, curve25519::Curve25519},
         },
         encrypted_connection::EncryptedConnection,
-        packet_connection::{PacketConnection, packet_receive_event::PacketReceiveEvent},
+        packet_connection::PacketConnection,
+        receive_loop::ReceiveLoop,
     };
 
     use crate::{
@@ -106,10 +111,10 @@ mod network_tests {
             });
 
             let connection = PacketConnection::new(stream);
-            let mut event = PacketReceiveEvent::new(connection).0;
+            let mut receive_loop = ReceiveLoop::new(connection, Arc::new(AtomicBool::default()));
 
-            let _sub = event.subscribe(receive_callback);
-            event.start();
+            let _sub = receive_loop.subscribe(receive_callback);
+            receive_loop.start();
         });
 
         let mut accept_stream = PacketConnection::new(listener.accept().unwrap().0);

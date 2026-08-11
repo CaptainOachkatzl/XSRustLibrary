@@ -13,7 +13,7 @@ use crate::{
 
 type EventHandler = dyn Fn(&Vec<u8>) + Send + Sync;
 
-pub struct PacketReceiveEvent<T: Connection<ErrorType = E>, E: Error> {
+pub struct ReceiveLoop<T: Connection<ErrorType = E>, E: Error> {
     connection: T,
     receive_event: Event<Vec<u8>>,
     receive_buffer: Vec<u8>,
@@ -21,18 +21,15 @@ pub struct PacketReceiveEvent<T: Connection<ErrorType = E>, E: Error> {
     stop: Arc<AtomicBool>,
 }
 
-impl<T: Connection<ErrorType = E>, E: Error> PacketReceiveEvent<T, E> {
-    pub fn new(connection: T) -> (Self, Arc<AtomicBool>) {
-        let stop = Arc::new(AtomicBool::new(false));
-        let event = Self {
+impl<T: Connection<ErrorType = E>, E: Error> ReceiveLoop<T, E> {
+    pub fn new(connection: T, stop: Arc<AtomicBool>) -> Self {
+        Self {
             connection: connection,
             receive_event: Event::new(),
             receive_buffer: Vec::new(),
             started: false,
-            stop: stop.clone(),
-        };
-
-        (event, stop)
+            stop,
+        }
     }
 
     pub fn start(&mut self) {
