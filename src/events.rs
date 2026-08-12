@@ -16,5 +16,6 @@ pub trait InvokableOnce<T> {
 }
 
 pub trait Subscribable<T> {
+    #[must_use]
     fn subscribe(&mut self, event_handler: Box<EventHandler<T>>) -> Subscription<T>;
 }

@@ -46,6 +46,7 @@ impl<T: Connection<ErrorType = E>, E: Error> ReceiveLoop<T, E> {
         }
     }
 
+    #[must_use]
     pub fn subscribe(&mut self, subscriber: Box<EventHandler>) -> Subscription<Vec<u8>> {
         self.receive_event.subscribe(subscriber)
     }
