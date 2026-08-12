@@ -3,11 +3,7 @@ mod util;
 
 #[cfg(test)]
 mod network_tests {
-    use std::{
-        net::*,
-        sync::{atomic::AtomicBool, *},
-        thread,
-    };
+    use std::{net::*, sync::*, thread};
 
     use xs_rust_library::{
         connection::Connection,
@@ -111,10 +107,7 @@ mod network_tests {
             });
 
             let connection = PacketConnection::new(stream);
-            let mut receive_loop = ReceiveLoop::new(connection, Arc::new(AtomicBool::default()));
-
-            let _sub = receive_loop.subscribe(receive_callback);
-            receive_loop.start();
+            ReceiveLoop::start(connection, vec![receive_callback]);
         });
 
         let mut accept_stream = PacketConnection::new(listener.accept().unwrap().0);
